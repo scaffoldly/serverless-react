@@ -46,8 +46,7 @@ class ServerlessWebpackSpa {
     this.options = options;
 
     this.hooks = {
-      "before:run:run": this.beforeHandler.bind(this),
-      "after:run:run": this.afterHandler.bind(this),
+      "before:offline:start": this.beforeHandler.bind(this),
     };
   }
 
@@ -67,13 +66,7 @@ class ServerlessWebpackSpa {
 
   async beforeHandler() {
     if (this.shouldExecute()) {
-      console.log(`${PLUGIN_NAME} Running`);
-    }
-  }
-
-  async afterHandler() {
-    if (this.shouldExecute()) {
-      console.log(`${PLUGIN_NAME} Ending!`);
+      console.log(`${PLUGIN_NAME} Starting!`);
     }
   }
 }
