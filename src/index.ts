@@ -1,5 +1,5 @@
-type PluginName = "serverless-webpack-spa";
-const PLUGIN_NAME: PluginName = "serverless-webpack-spa";
+type PluginName = "webpack-spa";
+const PLUGIN_NAME: PluginName = "webpack-spa";
 
 type PluginConfig = {
   stages?: string[];
