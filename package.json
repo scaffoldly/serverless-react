@@ -19,6 +19,7 @@
   "dependencies": {
     "@types/node": ">=16",
     "aws-sdk": ">=2",
+    "serverless-webpack": "^5.13.0",
     "typescript": ">=5"
   },
   "devDependencies": {}

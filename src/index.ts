@@ -1,3 +1,5 @@
+// import ServerlessWebpack from "serverless-webpack";
+
 type PluginName = "webpack-spa";
 const PLUGIN_NAME: PluginName = "webpack-spa";
 
@@ -46,7 +48,59 @@ class ServerlessWebpackSpa {
     this.options = options;
 
     this.hooks = {
-      "before:offline:start": this.beforeHandler.bind(this),
+      initialize: async () => {},
+      "before:package:createDeploymentArtifacts": async () => {
+        console.log("!!!! before:package:createDeploymentArtifacts");
+      },
+      "after:package:createDeploymentArtifacts": async () => {
+        console.log("!!!! after:package:createDeploymentArtifacts");
+      },
+      "before:deploy:function:packageFunction": async () => {
+        console.log("!!!! before:deploy:function:packageFunction");
+      },
+      "before:invoke:local:invoke": async () => {
+        console.log("!!!! before:invoke:local:invoke");
+      },
+      "after:invoke:local:invoke": async () => {
+        console.log("!!!! after:invoke:local:invoke");
+      },
+      "before:run:run": async () => {
+        console.log("!!!! before:run:run");
+      },
+      "after:run:run": async () => {
+        console.log("!!!! after:run:run");
+      },
+      "webpack-spa:webpack": async () => {
+        console.log("!!!! webpack-spa:webpack");
+      },
+      // internal hooks
+      "webpack-spa:validate:validate": async () => {
+        console.log("!!!! webpack-spa:validate:validate");
+      },
+      "webpack-spa:compile:compile": async () => {
+        console.log("!!!! webpack-spa:compile:compile");
+      },
+      "webpack-spa:compile:watch:compile": async () => {
+        console.log("!!!! webpack-spa:compile:watch:compile");
+      },
+      "webpack-spa:package:packExternalModules": async () => {
+        console.log("!!!! webpack-spa:package:packExternalModules");
+      },
+      "webpack-spa:package:packageModules": async () => {
+        console.log("!!!! webpack-spa:package:packageModules");
+      },
+      "webpack-spa:package:copyExistingArtifacts": async () => {
+        console.log("!!!! webpack-spa:package:copyExistingArtifacts");
+      },
+      "before:offline:start": async () => {
+        console.log("!!!! before:offline:start");
+      },
+      "before:offline:start:init": async () => {
+        console.log("!!!! before:offline:start:init");
+      },
+      "before:step-functions-offline:start": async () => {
+        console.log("!!!! before:step-functions-offline:start");
+      },
     };
   }
 
