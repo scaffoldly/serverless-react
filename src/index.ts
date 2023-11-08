@@ -1,5 +1,3 @@
-import * as lib from "serverless-webpack/lib";
-
 type PluginName = "webpack-spa";
 const PLUGIN_NAME: PluginName = "webpack-spa";
 type SupportedFrameworks = "react";
@@ -47,6 +45,9 @@ type ServerlessService = {
 
 type Serverless = {
   service: ServerlessService;
+  pluginManager: {
+    spawn: (command: string) => Promise<void>;
+  };
 };
 
 // type Options = {
@@ -54,12 +55,8 @@ type Serverless = {
 // };
 
 class ServerlessWebpackSpa {
-  static get lib() {
-    return lib;
-  }
-
-  prepareOfflineInvoke = lib.prepareOfflineInvoke;
-  wpwatch = lib.wpwatch;
+  // compile = require("serverless-webpack/lib/compile");
+  validate = require("serverless-webpack/lib/validate");
 
   service: ServerlessService;
   pluginConfig: PluginConfig;
@@ -74,14 +71,15 @@ class ServerlessWebpackSpa {
   //   - typescript
 
   constructor(
-    serverless: Serverless
-    //, options: Options
+    private serverless: Serverless //, options: Options
   ) {
     this.service = serverless.service;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
 
     this.config = this.prepareWebpackPluginConfig(this.pluginConfig);
+
+    console.log("!!! using config", JSON.stringify(this.config, null, 2));
 
     // this.options = options;
 
@@ -114,6 +112,8 @@ class ServerlessWebpackSpa {
       // internal hooks
       "webpack-spa:validate:validate": async () => {
         console.log("!!!! webpack-spa:validate:validate");
+        console.log("!!! validate fn", this.validate);
+        await this.validate();
       },
       "webpack-spa:compile:compile": async () => {
         console.log("!!!! webpack-spa:compile:compile");
@@ -132,9 +132,7 @@ class ServerlessWebpackSpa {
       },
       "before:offline:start": async () => {
         console.log("!!!! before:offline:start");
-        lib.webpack.isLocal = true;
-        await this.prepareOfflineInvoke();
-        await this.wpwatch();
+        await this.serverless.pluginManager.spawn("webpack-spa:validate");
       },
       "before:offline:start:init": async () => {
         console.log("!!!! before:offline:start:init");
