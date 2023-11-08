@@ -75,7 +75,7 @@ type Serverless = {
 
 class ServerlessWebpackSpa {
   // compile = require("serverless-webpack/lib/compile");
-  validate = require("serverless-webpack/lib/validate");
+  validate = require("serverless-webpack/lib/validate").validate;
 
   service: ServerlessService;
   pluginConfig: PluginConfig;
