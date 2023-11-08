@@ -1,10 +1,30 @@
-// import ServerlessWebpack from "serverless-webpack";
+import * as lib from "serverless-webpack/lib";
 
 type PluginName = "webpack-spa";
 const PLUGIN_NAME: PluginName = "webpack-spa";
+type SupportedFrameworks = "react";
+type SupportedPackagers = "npm" | "yarn";
 
 type PluginConfig = {
-  stages?: string[];
+  framework?: SupportedFrameworks;
+  appDir?: string;
+  webpackConfig?: string;
+  packager?: SupportedPackagers;
+  nodeModulesRelativeDir?: string;
+  lockfileRelativePath?: string;
+};
+
+type WebpackPluginConfig = {
+  packager: SupportedPackagers;
+  webpackConfig: string;
+  packagePath: string;
+  includeModules: {
+    packagePath: string;
+    nodeModulesRelativeDir: string;
+  };
+  packagerOptions: {
+    lockFile: string;
+  };
 };
 
 type ServerlessCustom = {
@@ -29,23 +49,41 @@ type Serverless = {
   service: ServerlessService;
 };
 
-type Options = {
-  stage: string;
-};
+// type Options = {
+//   stage: string;
+// };
 
 class ServerlessWebpackSpa {
+  static get lib() {
+    return lib;
+  }
+
+  prepareOfflineInvoke = lib.prepareOfflineInvoke;
+  wpwatch = lib.wpwatch;
+
   service: ServerlessService;
-  config: PluginConfig;
+  pluginConfig: PluginConfig;
+  config: WebpackPluginConfig;
   hooks: {
     [key: string]: () => Promise<void>;
   };
 
-  constructor(serverless: Serverless, private options: Options) {
+  // TODO:
+  //   - options
+  //   - commands + options
+  //   - typescript
+
+  constructor(
+    serverless: Serverless
+    //, options: Options
+  ) {
     this.service = serverless.service;
-    this.config =
+    this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
 
-    this.options = options;
+    this.config = this.prepareWebpackPluginConfig(this.pluginConfig);
+
+    // this.options = options;
 
     this.hooks = {
       initialize: async () => {},
@@ -94,6 +132,9 @@ class ServerlessWebpackSpa {
       },
       "before:offline:start": async () => {
         console.log("!!!! before:offline:start");
+        lib.webpack.isLocal = true;
+        await this.prepareOfflineInvoke();
+        await this.wpwatch();
       },
       "before:offline:start:init": async () => {
         console.log("!!!! before:offline:start:init");
@@ -104,25 +145,32 @@ class ServerlessWebpackSpa {
     };
   }
 
-  get stage() {
-    return (
-      (this.options && this.options.stage) ||
-      (this.service.provider && this.service.provider.stage)
-    );
-  }
+  prepareWebpackPluginConfig = (
+    pluginConfig: PluginConfig
+  ): WebpackPluginConfig => {
+    const { appDir = "." } = pluginConfig;
 
-  shouldExecute() {
-    if (this.config.stages && !this.config.stages.includes(this.stage)) {
-      return false;
+    if (pluginConfig.framework === "react") {
+      return {
+        packager: pluginConfig.packager || "npm",
+        webpackConfig:
+          pluginConfig.webpackConfig ||
+          "./node_modules/react-scripts/config/webpack.config.js",
+        packagePath: `${appDir}/package.json`,
+        includeModules: {
+          packagePath: `${appDir}/package.json`,
+          nodeModulesRelativeDir:
+            pluginConfig.nodeModulesRelativeDir || `${appDir}/node_modules`,
+        },
+        packagerOptions: {
+          lockFile:
+            pluginConfig.lockfileRelativePath || `${appDir}/package-lock.json`,
+        },
+      };
     }
-    return true;
-  }
 
-  async beforeHandler() {
-    if (this.shouldExecute()) {
-      console.log(`${PLUGIN_NAME} Starting!`);
-    }
-  }
+    throw new Error(`Unsupported framework: ${pluginConfig.framework}`);
+  };
 }
 
 module.exports = ServerlessWebpackSpa;
