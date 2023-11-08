@@ -12,6 +12,25 @@ type PluginConfig = {
   lockfileRelativePath?: string;
 };
 
+type PluginCommands = {
+  [key in PluginName]: {
+    usage: string;
+    lifecycleEvents: string[];
+    commands: {
+      [key: string]: {
+        type: string;
+        lifecycleEvents: string[];
+        commands?: {
+          [key: string]: {
+            type: string;
+            lifecycleEvents: string[];
+          };
+        };
+      };
+    };
+  };
+};
+
 type WebpackPluginConfig = {
   packager: SupportedPackagers;
   webpackConfig: string;
@@ -60,6 +79,7 @@ class ServerlessWebpackSpa {
 
   service: ServerlessService;
   pluginConfig: PluginConfig;
+  commands: PluginCommands;
   config: WebpackPluginConfig;
   hooks: {
     [key: string]: () => Promise<void>;
@@ -82,6 +102,37 @@ class ServerlessWebpackSpa {
     console.log("!!! using config", JSON.stringify(this.config, null, 2));
 
     // this.options = options;
+
+    this.commands = {
+      "webpack-spa": {
+        usage: "Bundle with Webpack SPA",
+        lifecycleEvents: ["webpack-spa"],
+        commands: {
+          validate: {
+            type: "entrypoint",
+            lifecycleEvents: ["validate"],
+          },
+          compile: {
+            type: "entrypoint",
+            lifecycleEvents: ["compile"],
+            commands: {
+              watch: {
+                type: "entrypoint",
+                lifecycleEvents: ["compile"],
+              },
+            },
+          },
+          package: {
+            type: "entrypoint",
+            lifecycleEvents: [
+              "packExternalModules",
+              "packageModules",
+              "copyExistingArtifacts",
+            ],
+          },
+        },
+      },
+    };
 
     this.hooks = {
       initialize: async () => {},
