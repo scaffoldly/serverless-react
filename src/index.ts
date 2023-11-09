@@ -73,17 +73,43 @@ type Options = {
   verbose?: boolean;
 };
 
-type Utilities = {
-  log?: any;
-  progress?: any;
+type Log = ((message: string) => void) & {
+  verbose: (message: string) => void;
+  warning: (message: string) => void;
+  error: (message: string) => void;
+};
+
+type Progress = {
+  get: () => {
+    update: (message: string) => void;
+    notice: (message: string) => void;
+    remove: () => void;
+  };
+};
+
+const DEFAULT_LOG: Log = (message?: string) =>
+  console.log(`[${PLUGIN_NAME} ${message}`);
+DEFAULT_LOG.verbose = (message?: string) =>
+  console.log(`[${PLUGIN_NAME} ${message}`);
+DEFAULT_LOG.warning = (message?: string) =>
+  console.log(`[${PLUGIN_NAME} ${message}`);
+DEFAULT_LOG.error = (message?: string) =>
+  console.log(`[${PLUGIN_NAME} ${message}`);
+
+const DEFAULT_PROGRESS = {
+  get: () => ({
+    update: (message: string) => DEFAULT_LOG(message),
+    notice: (message: string) => DEFAULT_LOG(message),
+    remove: () => {},
+  }),
 };
 
 class ServerlessWebpackSpa {
   // compile = require("serverless-webpack/lib/compile");
   validate = require("serverless-webpack/lib/validate").validate;
 
-  log?: any;
-  progress: any;
+  log = DEFAULT_LOG;
+  progress = DEFAULT_PROGRESS;
 
   service: ServerlessService;
   pluginConfig: PluginConfig;
@@ -101,11 +127,7 @@ class ServerlessWebpackSpa {
   //   - commands + options
   //   - typescript
 
-  constructor(
-    private serverless: Serverless,
-    protected options?: Options,
-    utilities?: Utilities
-  ) {
+  constructor(private serverless: Serverless, protected options?: Options) {
     this.service = serverless.service;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
@@ -116,22 +138,6 @@ class ServerlessWebpackSpa {
 
     if (!this.options) {
       this.options = {};
-    }
-
-    if (utilities) {
-      this.log = utilities.log;
-      this.progress = utilities.progress;
-    }
-
-    if (utilities && utilities.progress) {
-      this.progress = utilities.progress;
-    } else {
-      this.progress = {
-        get: () => ({
-          update: () => {},
-          notice: () => {},
-        }),
-      };
     }
 
     this.commands = {
