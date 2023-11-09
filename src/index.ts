@@ -69,9 +69,9 @@ type Serverless = {
   };
 };
 
-// type Options = {
-//   stage: string;
-// };
+type Options = {
+  verbose?: boolean;
+};
 
 class ServerlessWebpackSpa {
   // compile = require("serverless-webpack/lib/compile");
@@ -79,8 +79,11 @@ class ServerlessWebpackSpa {
 
   service: ServerlessService;
   pluginConfig: PluginConfig;
+  configuration: {
+    config: WebpackPluginConfig;
+  };
+
   commands: PluginCommands;
-  config: WebpackPluginConfig;
   hooks: {
     [key: string]: () => Promise<void>;
   };
@@ -90,18 +93,19 @@ class ServerlessWebpackSpa {
   //   - commands + options
   //   - typescript
 
-  constructor(
-    private serverless: Serverless //, options: Options
-  ) {
+  constructor(private serverless: Serverless, protected options: Options = {}) {
     this.service = serverless.service;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
 
-    this.config = this.prepareWebpackPluginConfig(this.pluginConfig);
+    this.configuration = {
+      config: this.prepareWebpackPluginConfig(this.pluginConfig),
+    };
 
-    console.log("!!! using config", JSON.stringify(this.config, null, 2));
-
-    // this.options = options;
+    console.log(
+      "!!! using config",
+      JSON.stringify(this.configuration.config, null, 2)
+    );
 
     this.commands = {
       "webpack-spa": {
