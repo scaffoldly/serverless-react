@@ -73,9 +73,17 @@ type Options = {
   verbose?: boolean;
 };
 
+type Utilities = {
+  log?: any;
+  progress?: any;
+};
+
 class ServerlessWebpackSpa {
   // compile = require("serverless-webpack/lib/compile");
   validate = require("serverless-webpack/lib/validate").validate;
+
+  log?: any;
+  progress: any;
 
   service: ServerlessService;
   pluginConfig: PluginConfig;
@@ -93,7 +101,11 @@ class ServerlessWebpackSpa {
   //   - commands + options
   //   - typescript
 
-  constructor(private serverless: Serverless, protected options: Options = {}) {
+  constructor(
+    private serverless: Serverless,
+    protected options?: Options,
+    utilities?: Utilities
+  ) {
     this.service = serverless.service;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
@@ -102,10 +114,25 @@ class ServerlessWebpackSpa {
       config: this.prepareWebpackPluginConfig(this.pluginConfig),
     };
 
-    console.log(
-      "!!! using config",
-      JSON.stringify(this.configuration.config, null, 2)
-    );
+    if (!this.options) {
+      this.options = {};
+    }
+
+    if (utilities) {
+      this.log = utilities.log;
+      this.progress = utilities.progress;
+    }
+
+    if (utilities && utilities.progress) {
+      this.progress = utilities.progress;
+    } else {
+      this.progress = {
+        get: () => ({
+          update: () => {},
+          notice: () => {},
+        }),
+      };
+    }
 
     this.commands = {
       "webpack-spa": {
