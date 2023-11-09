@@ -67,6 +67,7 @@ type Serverless = {
   pluginManager: {
     spawn: (command: string) => Promise<void>;
   };
+  config: any;
 };
 
 type Options = {
@@ -84,6 +85,19 @@ type Progress = {
     update: (message: string) => void;
     notice: (message: string) => void;
     remove: () => void;
+  };
+};
+
+type Lib = {
+  serverless?: Serverless;
+  webpack: {
+    isLocal?: boolean;
+  };
+  entries?: {
+    [name: string]: string | string[];
+  };
+  options?: { [name: string]: string | boolean | number } & {
+    param?: string[];
   };
 };
 
@@ -108,6 +122,7 @@ class ServerlessWebpackSpa {
   // compile = require("serverless-webpack/lib/compile");
   validate = require("serverless-webpack/lib/validate").validate;
 
+  lib: Lib;
   log = DEFAULT_LOG;
   progress = DEFAULT_PROGRESS;
 
@@ -134,6 +149,15 @@ class ServerlessWebpackSpa {
 
     this.configuration = {
       config: this.prepareWebpackPluginConfig(this.pluginConfig),
+    };
+
+    console.log(
+      "!!!this.serverless.config.servicePath",
+      this.serverless.config.servicePath
+    );
+
+    this.lib = {
+      webpack: {},
     };
 
     if (!this.options) {
@@ -200,7 +224,6 @@ class ServerlessWebpackSpa {
       // internal hooks
       "webpack-spa:validate:validate": async () => {
         console.log("!!!! webpack-spa:validate:validate");
-        console.log("!!! validate fn", this.validate);
         await this.validate();
       },
       "webpack-spa:compile:compile": async () => {
@@ -220,6 +243,7 @@ class ServerlessWebpackSpa {
       },
       "before:offline:start": async () => {
         console.log("!!!! before:offline:start");
+        this.lib.webpack.isLocal = true;
         await this.serverless.pluginManager.spawn("webpack-spa:validate");
       },
       "before:offline:start:init": async () => {
