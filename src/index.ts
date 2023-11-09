@@ -96,7 +96,7 @@ DEFAULT_LOG.warning = (message?: string) =>
 DEFAULT_LOG.error = (message?: string) =>
   console.log(`[${PLUGIN_NAME} ${message}`);
 
-const DEFAULT_PROGRESS = {
+const DEFAULT_PROGRESS: Progress = {
   get: () => ({
     update: (message: string) => DEFAULT_LOG(message),
     notice: (message: string) => DEFAULT_LOG(message),
