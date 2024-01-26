@@ -1,15 +1,15 @@
 {
-  "name": "serverless-webpack-spa",
-  "version": "0.1.0-12",
+  "name": "serverless-react",
+  "version": "0.1.0-0",
   "engines": {
     "node": ">=16"
   },
-  "description": "Serverless Webpack Extension for Single Page Applications",
+  "description": "Serverless React Plugin",
   "author": "scaffold.ly",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/scaffoldly/serverless-webpack-spa"
+    "url": "https://github.com/scaffoldly/serverless-react"
   },
   "main": "index.js",
   "scripts": {
@@ -17,10 +17,10 @@
     "postinstall": "yarn build"
   },
   "dependencies": {
-    "@types/node": ">=16",
-    "aws-sdk": ">=2",
     "serverless-webpack": "^5.13.0",
     "typescript": ">=5"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/node": ">=16"
+  }
 }

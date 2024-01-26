@@ -1,15 +1,10 @@
-type PluginName = "webpack-spa";
-const PLUGIN_NAME: PluginName = "webpack-spa";
-type SupportedFrameworks = "react";
-type SupportedPackagers = "npm" | "yarn";
+type PluginName = "react";
+const PLUGIN_NAME: PluginName = "react";
+type SupportedPackagers = "yarn"; // TODO npm/pnpm
 
 type PluginConfig = {
-  framework?: SupportedFrameworks;
   appDir?: string;
-  webpackConfig?: string;
   packager?: SupportedPackagers;
-  nodeModulesRelativeDir?: string;
-  lockfileRelativePath?: string;
 };
 
 type PluginCommands = {
@@ -118,14 +113,12 @@ const DEFAULT_PROGRESS: Progress = {
   }),
 };
 
-class ServerlessWebpackSpa {
-  // compile = require("serverless-webpack/lib/compile");
-  validate = require("serverless-webpack/lib/validate").validate;
-
+class ServerlessReact {
   lib: Lib;
   log = DEFAULT_LOG;
   progress = DEFAULT_PROGRESS;
 
+  serverless: Serverless;
   service: ServerlessService;
   pluginConfig: PluginConfig;
   configuration: {
@@ -137,12 +130,8 @@ class ServerlessWebpackSpa {
     [key: string]: () => Promise<void>;
   };
 
-  // TODO:
-  //   - options
-  //   - commands + options
-  //   - typescript
-
-  constructor(private serverless: Serverless, protected options?: Options) {
+  constructor(serverless: Serverless, protected options?: Options) {
+    this.serverless = serverless;
     this.service = serverless.service;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
@@ -150,11 +139,6 @@ class ServerlessWebpackSpa {
     this.configuration = {
       config: this.prepareWebpackPluginConfig(this.pluginConfig),
     };
-
-    console.log(
-      "!!!this.serverless.config.servicePath",
-      this.serverless.config.servicePath
-    );
 
     this.lib = {
       webpack: {},
@@ -165,21 +149,21 @@ class ServerlessWebpackSpa {
     }
 
     this.commands = {
-      "webpack-spa": {
-        usage: "Bundle with Webpack SPA",
-        lifecycleEvents: ["webpack-spa"],
+      react: {
+        usage: "Bundle React",
+        lifecycleEvents: ["react"],
         commands: {
           validate: {
             type: "entrypoint",
             lifecycleEvents: ["validate"],
           },
-          compile: {
+          build: {
             type: "entrypoint",
-            lifecycleEvents: ["compile"],
+            lifecycleEvents: ["build"],
             commands: {
               watch: {
                 type: "entrypoint",
-                lifecycleEvents: ["compile"],
+                lifecycleEvents: ["build"],
               },
             },
           },
@@ -197,60 +181,11 @@ class ServerlessWebpackSpa {
 
     this.hooks = {
       initialize: async () => {},
-      "before:package:createDeploymentArtifacts": async () => {
-        console.log("!!!! before:package:createDeploymentArtifacts");
+      "react:validate": async () => {
+        console.log("!!!! react:validate");
       },
-      "after:package:createDeploymentArtifacts": async () => {
-        console.log("!!!! after:package:createDeploymentArtifacts");
-      },
-      "before:deploy:function:packageFunction": async () => {
-        console.log("!!!! before:deploy:function:packageFunction");
-      },
-      "before:invoke:local:invoke": async () => {
-        console.log("!!!! before:invoke:local:invoke");
-      },
-      "after:invoke:local:invoke": async () => {
-        console.log("!!!! after:invoke:local:invoke");
-      },
-      "before:run:run": async () => {
-        console.log("!!!! before:run:run");
-      },
-      "after:run:run": async () => {
-        console.log("!!!! after:run:run");
-      },
-      "webpack-spa:webpack": async () => {
-        console.log("!!!! webpack-spa:webpack");
-      },
-      // internal hooks
-      "webpack-spa:validate:validate": async () => {
-        console.log("!!!! webpack-spa:validate:validate");
-        await this.validate();
-      },
-      "webpack-spa:compile:compile": async () => {
-        console.log("!!!! webpack-spa:compile:compile");
-      },
-      "webpack-spa:compile:watch:compile": async () => {
-        console.log("!!!! webpack-spa:compile:watch:compile");
-      },
-      "webpack-spa:package:packExternalModules": async () => {
-        console.log("!!!! webpack-spa:package:packExternalModules");
-      },
-      "webpack-spa:package:packageModules": async () => {
-        console.log("!!!! webpack-spa:package:packageModules");
-      },
-      "webpack-spa:package:copyExistingArtifacts": async () => {
-        console.log("!!!! webpack-spa:package:copyExistingArtifacts");
-      },
-      "before:offline:start": async () => {
-        console.log("!!!! before:offline:start");
-        this.lib.webpack.isLocal = true;
-        await this.serverless.pluginManager.spawn("webpack-spa:validate");
-      },
-      "before:offline:start:init": async () => {
-        console.log("!!!! before:offline:start:init");
-      },
-      "before:step-functions-offline:start": async () => {
-        console.log("!!!! before:step-functions-offline:start");
+      "react:build": async () => {
+        console.log("!!!! react:build");
       },
     };
   }
@@ -258,29 +193,19 @@ class ServerlessWebpackSpa {
   prepareWebpackPluginConfig = (
     pluginConfig: PluginConfig
   ): WebpackPluginConfig => {
-    const { appDir = "." } = pluginConfig;
-
-    if (pluginConfig.framework === "react") {
-      return {
-        packager: pluginConfig.packager || "npm",
-        webpackConfig:
-          pluginConfig.webpackConfig ||
-          "./node_modules/react-scripts/config/webpack.config.js",
-        packagePath: `${appDir}/package.json`,
-        includeModules: {
-          packagePath: `${appDir}/package.json`,
-          nodeModulesRelativeDir:
-            pluginConfig.nodeModulesRelativeDir || `${appDir}/node_modules`,
-        },
-        packagerOptions: {
-          lockFile:
-            pluginConfig.lockfileRelativePath || `${appDir}/package-lock.json`,
-        },
-      };
-    }
-
-    throw new Error(`Unsupported framework: ${pluginConfig.framework}`);
+    return {
+      packager: pluginConfig.packager || "yarn",
+      webpackConfig: "./node_modules/react-scripts/config/webpack.config.js",
+      packagePath: `./package.json`,
+      includeModules: {
+        packagePath: `./package.json`,
+        nodeModulesRelativeDir: `./node_modules`,
+      },
+      packagerOptions: {
+        lockFile: "./yarn.lock",
+      },
+    };
   };
 }
 
-module.exports = ServerlessWebpackSpa;
+module.exports = ServerlessReact;
