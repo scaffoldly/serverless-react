@@ -220,8 +220,12 @@ class ServerlessReact {
     const configFactory = require(webpackConfig);
     const config: Configuration = configFactory("production");
 
+    // TODO use config.entry as a fallback
+    config.entry = path.join(
+      this.serverlessConfig.servicePath,
+      this.pluginConfig.entryPoint || "src/index.tsx"
+    );
     console.log("!!! config", config);
-    config.entry = this.pluginConfig.entryPoint || config.entry;
 
     const compiler = webpack(config);
 
