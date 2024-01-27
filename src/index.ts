@@ -127,6 +127,7 @@ class ServerlessReact {
   progress = DEFAULT_PROGRESS;
 
   serverless: Serverless;
+  serverlessConfig: ServerlessConfig;
   service: ServerlessService;
   pluginConfig: PluginConfig;
   configuration: {
@@ -141,6 +142,7 @@ class ServerlessReact {
   constructor(serverless: Serverless, protected options?: Options) {
     this.serverless = serverless;
     this.service = serverless.service;
+    this.serverlessConfig = serverless.config;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
 
@@ -197,23 +199,24 @@ class ServerlessReact {
       "react:build": async () => {
         console.log("!!!! react:build");
       },
+      "before:offline:start:init": async () => {
+        this.log.verbose("before:offline:start:init");
+        await this.build();
+      },
     };
   }
 
-  build = async (
-    serverlessConfig: ServerlessConfig,
-    pluginConfig: PluginConfig
-  ): Promise<void> => {
+  build = async (): Promise<void> => {
     const webpackConfig = path.join(
-      serverlessConfig.servicePath,
-      pluginConfig.webpackConfig ||
+      this.serverlessConfig.servicePath,
+      this.pluginConfig.webpackConfig ||
         "node_modules/react-scripts/webpack.config.js"
     );
 
     const configFactory = (await import(webpackConfig)).default;
     const config: Configuration = configFactory("production");
 
-    config.entry = pluginConfig.entryPoint || config.entry;
+    config.entry = this.pluginConfig.entryPoint || config.entry;
 
     const compiler = webpack(config);
 
