@@ -17,9 +17,12 @@
     "postinstall": "yarn build"
   },
   "dependencies": {
-    "typescript": ">=5"
+    "react-scripts": "^5.0.1",
+    "typescript": ">=5",
+    "webpack": "^5.90.0"
   },
   "devDependencies": {
-    "@types/node": ">=16"
+    "@types/node": ">=16",
+    "@types/webpack": "^5.28.5"
   }
 }

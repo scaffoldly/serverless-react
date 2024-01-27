@@ -1,10 +1,14 @@
+import path from "path";
+import webpack, { Configuration } from "webpack";
+
 type PluginName = "react";
 const PLUGIN_NAME: PluginName = "react";
 type SupportedPackagers = "yarn"; // TODO npm/pnpm
 
 type PluginConfig = {
-  appDir?: string;
   packager?: SupportedPackagers;
+  webpackConfig?: string;
+  entryPoint?: string;
 };
 
 type PluginCommands = {
@@ -55,6 +59,10 @@ type ServerlessService = {
     name: string;
     events?: any[];
   };
+};
+
+type ServerlessConfig = {
+  servicePath: string;
 };
 
 type Serverless = {
@@ -191,6 +199,45 @@ class ServerlessReact {
       },
     };
   }
+
+  build = async (
+    serverlessConfig: ServerlessConfig,
+    pluginConfig: PluginConfig
+  ): Promise<void> => {
+    const webpackConfig = path.join(
+      serverlessConfig.servicePath,
+      pluginConfig.webpackConfig ||
+        "node_modules/react-scripts/webpack.config.js"
+    );
+
+    const configFactory = (await import(webpackConfig)).default;
+    const config: Configuration = configFactory("production");
+
+    config.entry = pluginConfig.entryPoint || config.entry;
+
+    const compiler = webpack(config);
+
+    return new Promise((resolve, reject) => {
+      compiler.run((err, stats) => {
+        if (err) {
+          return reject(err);
+        }
+        if (!stats) {
+          return reject(new Error("No stats from webpack"));
+        }
+        if (stats.hasErrors()) {
+          // TODO Formatting like build.js
+          return reject(new Error(stats.toJson().errors?.join("\n\n")));
+        }
+
+        // TODO fail on process.env.CI + warnings
+        console.log("Compiled with warnings.\n");
+        console.log(stats.toJson().warnings?.join("\n\n"));
+
+        resolve();
+      });
+    });
+  };
 
   prepareWebpackPluginConfig = (
     pluginConfig: PluginConfig
