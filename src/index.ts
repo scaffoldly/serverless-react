@@ -199,6 +199,10 @@ class ServerlessReact {
       "react:build": async () => {
         console.log("!!!! react:build");
       },
+      "before:offline:start": async () => {
+        this.log.verbose("before:offline:start");
+        await this.build();
+      },
       "before:offline:start:init": async () => {
         this.log.verbose("before:offline:start:init");
         await this.build();
