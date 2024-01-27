@@ -1,6 +1,6 @@
 {
   "name": "serverless-react",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "engines": {
     "node": ">=16"
   },
@@ -17,7 +17,6 @@
     "postinstall": "yarn build"
   },
   "dependencies": {
-    "serverless-webpack": "^5.13.0",
     "typescript": ">=5"
   },
   "devDependencies": {
