@@ -97,13 +97,13 @@ type Lib = {
 };
 
 const DEFAULT_LOG: Log = (message?: string) =>
-  console.log(`[${PLUGIN_NAME} ${message}`);
+  console.log(`[${PLUGIN_NAME}] ${message}`);
 DEFAULT_LOG.verbose = (message?: string) =>
-  console.log(`[${PLUGIN_NAME} ${message}`);
+  console.log(`[${PLUGIN_NAME}] ${message}`);
 DEFAULT_LOG.warning = (message?: string) =>
-  console.log(`[${PLUGIN_NAME} ${message}`);
+  console.log(`[${PLUGIN_NAME}] ${message}`);
 DEFAULT_LOG.error = (message?: string) =>
-  console.log(`[${PLUGIN_NAME} ${message}`);
+  console.log(`[${PLUGIN_NAME}] ${message}`);
 
 const DEFAULT_PROGRESS: Progress = {
   get: () => ({
@@ -135,6 +135,8 @@ class ServerlessReact {
     this.service = serverless.service;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
+
+    console.log("!!!! this.serverless", this.serverless);
 
     this.configuration = {
       config: this.prepareWebpackPluginConfig(this.pluginConfig),
