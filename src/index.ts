@@ -214,7 +214,7 @@ class ServerlessReact {
     const webpackConfig = path.join(
       this.serverlessConfig.servicePath,
       this.pluginConfig.webpackConfig ||
-        "node_modules/react-scripts/webpack.config.js"
+        "node_modules/react-scripts/config/webpack.config.js"
     );
 
     const configFactory = (await import(webpackConfig)).default;
