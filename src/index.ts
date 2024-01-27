@@ -146,7 +146,7 @@ class ServerlessReact {
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
 
-    console.log("!!!! this.serverless", this.serverless);
+    // console.log("!!!! this.serverless", this.serverless);
 
     this.configuration = {
       config: this.prepareWebpackPluginConfig(this.pluginConfig),
@@ -217,9 +217,10 @@ class ServerlessReact {
         "node_modules/react-scripts/config/webpack.config.js"
     );
 
-    const configFactory = (await import(webpackConfig)).default;
+    const configFactory = require(webpackConfig);
     const config: Configuration = configFactory("production");
 
+    console.log("!!! config", config);
     config.entry = this.pluginConfig.entryPoint || config.entry;
 
     const compiler = webpack(config);
