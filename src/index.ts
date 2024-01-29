@@ -3,12 +3,12 @@ import webpack, { Configuration } from "webpack";
 
 type PluginName = "react";
 const PLUGIN_NAME: PluginName = "react";
-type SupportedPackagers = "yarn"; // TODO npm/pnpm
 
 type PluginConfig = {
-  packager?: SupportedPackagers;
-  webpackConfig?: string;
-  entryPoint?: string;
+  webpackConfig?: string; // Default is node_modules/react-scripts/config/webpack.config.js
+  entryPoint?: string; // Default is src/index.js
+  outputDirectory?: string; // Default is .react
+  keepOutputDirectory?: boolean; // Default is false
 };
 
 type PluginCommands = {
@@ -27,19 +27,6 @@ type PluginCommands = {
         };
       };
     };
-  };
-};
-
-type WebpackPluginConfig = {
-  packager: SupportedPackagers;
-  webpackConfig: string;
-  packagePath: string;
-  includeModules: {
-    packagePath: string;
-    nodeModulesRelativeDir: string;
-  };
-  packagerOptions: {
-    lockFile: string;
   };
 };
 
@@ -91,19 +78,6 @@ type Progress = {
   };
 };
 
-type Lib = {
-  serverless?: Serverless;
-  webpack: {
-    isLocal?: boolean;
-  };
-  entries?: {
-    [name: string]: string | string[];
-  };
-  options?: { [name: string]: string | boolean | number } & {
-    param?: string[];
-  };
-};
-
 const DEFAULT_LOG: Log = (message?: string) =>
   console.log(`[${PLUGIN_NAME}] ${message}`);
 DEFAULT_LOG.verbose = (message?: string) =>
@@ -122,7 +96,6 @@ const DEFAULT_PROGRESS: Progress = {
 };
 
 class ServerlessReact {
-  lib: Lib;
   log = DEFAULT_LOG;
   progress = DEFAULT_PROGRESS;
 
@@ -130,9 +103,6 @@ class ServerlessReact {
   serverlessConfig: ServerlessConfig;
   service: ServerlessService;
   pluginConfig: PluginConfig;
-  configuration: {
-    config: WebpackPluginConfig;
-  };
 
   commands: PluginCommands;
   hooks: {
@@ -145,16 +115,6 @@ class ServerlessReact {
     this.serverlessConfig = serverless.config;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
-
-    // console.log("!!!! this.serverless", this.serverless);
-
-    this.configuration = {
-      config: this.prepareWebpackPluginConfig(this.pluginConfig),
-    };
-
-    this.lib = {
-      webpack: {},
-    };
 
     if (!this.options) {
       this.options = {};
@@ -211,6 +171,8 @@ class ServerlessReact {
   }
 
   build = async (): Promise<void> => {
+    // TODO Check if react-scripts exists
+
     const webpackConfig = path.join(
       this.serverlessConfig.servicePath,
       this.pluginConfig.webpackConfig ||
@@ -218,14 +180,26 @@ class ServerlessReact {
     );
 
     const configFactory = require(webpackConfig);
-    const config: Configuration = configFactory("production");
+    const config: Configuration = configFactory(
+      process.env.NODE_ENV === "development" ? "development" : "production"
+    );
+
+    if (!config.output) {
+      throw new Error("No output config in webpack config");
+    }
+
+    config.output.path = path.join(
+      this.serverlessConfig.servicePath,
+      this.pluginConfig.outputDirectory || `.${PLUGIN_NAME}`
+    );
 
     // TODO use config.entry as a fallback
     config.entry = path.join(
       this.serverlessConfig.servicePath,
-      this.pluginConfig.entryPoint || "src/index.tsx"
+      this.pluginConfig.entryPoint || "src/index.js"
     );
-    console.log("!!! config", config);
+
+    // TODO Copy public dir
 
     const compiler = webpack(config);
 
@@ -249,23 +223,6 @@ class ServerlessReact {
         resolve();
       });
     });
-  };
-
-  prepareWebpackPluginConfig = (
-    pluginConfig: PluginConfig
-  ): WebpackPluginConfig => {
-    return {
-      packager: pluginConfig.packager || "yarn",
-      webpackConfig: "./node_modules/react-scripts/config/webpack.config.js",
-      packagePath: `./package.json`,
-      includeModules: {
-        packagePath: `./package.json`,
-        nodeModulesRelativeDir: `./node_modules`,
-      },
-      packagerOptions: {
-        lockFile: "./yarn.lock",
-      },
-    };
   };
 }
 
