@@ -6,9 +6,9 @@ const PLUGIN_NAME: PluginName = "react";
 
 type PluginConfig = {
   webpackConfig?: string; // Default is node_modules/react-scripts/config/webpack.config.js
-  entryPoint?: string; // Default is src/index.js
-  outputDirectory?: string; // Default is .react
-  keepOutputDirectory?: boolean; // Default is false
+  // entryPoint?: string; // Default is ./src/index.js
+  // outputDirectory?: string; // Default is .react
+  // keepOutputDirectory?: boolean; // Default is false, TODO: implement
 };
 
 type PluginCommands = {
@@ -190,14 +190,17 @@ class ServerlessReact {
 
     config.output.path = path.join(
       this.serverlessConfig.servicePath,
-      this.pluginConfig.outputDirectory || `.${PLUGIN_NAME}`
+      `.${PLUGIN_NAME}`
     );
 
     // TODO use config.entry as a fallback
-    config.entry = path.join(
-      this.serverlessConfig.servicePath,
-      this.pluginConfig.entryPoint || "src/index.js"
-    );
+    // config.entry = path.join(
+    //   this.serverlessConfig.servicePath,
+    //   this.pluginConfig.entryPoint || "src/index.js"
+    // );
+
+    // TODO appSrc
+    // TODO publicUrlOrPath
 
     // TODO Copy public dir
 
