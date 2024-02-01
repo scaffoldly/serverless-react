@@ -161,12 +161,20 @@ class ServerlessReact {
         this.log.verbose("react:build");
       },
       "before:offline:start": async () => {
+        this.log.verbose("before:offline:start");
         const { config, compiler } = await this.build();
         await this.watch(config, compiler);
       },
       "before:offline:start:init": async () => {
+        this.log.verbose("before:offline:start:init");
         const { config, compiler } = await this.build();
         await this.watch(config, compiler);
+      },
+      "before:package:createDeploymentArtifacts": async () => {
+        this.log.verbose("before:package:createDeploymentArtifacts");
+      },
+      "after:package:createDeploymentArtifacts": async () => {
+        this.log.verbose("after:package:createDeploymentArtifacts");
       },
     };
   }
