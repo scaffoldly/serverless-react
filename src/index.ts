@@ -273,13 +273,15 @@ class ServerlessReact {
     const { errors, warnings } = statsJson;
 
     if (errors && errors.length > 0) {
-      throw new Error(`Webpack failed to compile:\n${errors.join("\n\n")}`);
+      throw new Error(
+        `Webpack failed to compile:\n${errors.map((e) => e.message).join("\n")}`
+      );
     }
 
     if (warnings && warnings.length > 0) {
-      const message = `Webpack compiled with warnings:\n${warnings.join(
-        "\n\n"
-      )}`;
+      const message = `Webpack compiled with warnings:\n${warnings
+        .map((e) => e.message)
+        .join("\n")}`;
       if (process.env.CI) {
         throw new Error(message);
       } else {
