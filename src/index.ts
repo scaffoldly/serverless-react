@@ -1,5 +1,6 @@
 import path from "path";
 import webpack, { Configuration } from "webpack";
+import fs from "fs-extra";
 
 type PluginName = "react";
 const PLUGIN_NAME: PluginName = "react";
@@ -154,35 +155,51 @@ class ServerlessReact {
     this.hooks = {
       initialize: async () => {},
       "react:validate": async () => {
-        console.log("!!!! react:validate");
+        this.log.verbose("react:validate");
       },
       "react:build": async () => {
-        console.log("!!!! react:build");
+        this.log.verbose("react:build");
       },
       "before:offline:start": async () => {
-        this.log.verbose("before:offline:start");
-        await this.build();
+        const { config, compiler } = await this.build();
+        await this.watch(config, compiler);
       },
       "before:offline:start:init": async () => {
-        this.log.verbose("before:offline:start:init");
-        await this.build();
+        const { config, compiler } = await this.build();
+        await this.watch(config, compiler);
       },
     };
   }
 
-  build = async (): Promise<void> => {
+  build = async (): Promise<{
+    config: webpack.Configuration;
+    compiler: webpack.Compiler;
+  }> => {
     // TODO Check if react-scripts exists
+    process.env.BABEL_ENV = "production";
+    process.env.NODE_ENV = "production";
 
-    const webpackConfig = path.join(
+    require(path.join(
+      this.serverlessConfig.servicePath,
+      this.pluginConfig.webpackConfig || "node_modules/react-scripts/config/env"
+    ));
+
+    const paths = require(path.join(
+      this.serverlessConfig.servicePath,
+      this.pluginConfig.webpackConfig ||
+        "node_modules/react-scripts/config/paths"
+    ));
+
+    const { checkBrowsers } = require("react-dev-utils/browsersHelper");
+    await checkBrowsers(paths.appPath, false);
+
+    const configFactory = require(path.join(
       this.serverlessConfig.servicePath,
       this.pluginConfig.webpackConfig ||
         "node_modules/react-scripts/config/webpack.config.js"
-    );
+    ));
 
-    const configFactory = require(webpackConfig);
-    const config: Configuration = configFactory(
-      process.env.NODE_ENV === "development" ? "development" : "production"
-    );
+    const config: Configuration = configFactory("production");
 
     if (!config.output) {
       throw new Error("No output config in webpack config");
@@ -193,39 +210,82 @@ class ServerlessReact {
       `.${PLUGIN_NAME}`
     );
 
-    // TODO use config.entry as a fallback
-    // config.entry = path.join(
-    //   this.serverlessConfig.servicePath,
-    //   this.pluginConfig.entryPoint || "src/index.js"
-    // );
-
-    // TODO appSrc
-    // TODO publicUrlOrPath
-
-    // TODO Copy public dir
+    fs.emptyDirSync(config.output.path);
+    fs.copySync(paths.appPublic, config.output.path, {
+      dereference: true,
+      filter: (file) => file !== paths.appHtml,
+    });
 
     const compiler = webpack(config);
 
     return new Promise((resolve, reject) => {
+      this.log.verbose(`[${config.entry}] Starting webpack build...`);
+
       compiler.run((err, stats) => {
-        if (err) {
-          return reject(err);
-        }
-        if (!stats) {
-          return reject(new Error("No stats from webpack"));
-        }
-        if (stats.hasErrors()) {
-          // TODO Formatting like build.js
-          return reject(new Error(stats.toJson().errors?.join("\n\n")));
+        try {
+          this.handleWebpackError(config, err);
+        } catch (error: any) {
+          this.log.error(`[${config.entry}] ${error.message}`);
+          return reject();
         }
 
-        // TODO fail on process.env.CI + warnings
-        console.log("Compiled with warnings.\n");
-        console.log(stats.toJson().warnings?.join("\n\n"));
+        try {
+          this.handleWebpackStats(config, stats);
+        } catch (error: any) {
+          this.log.error(`[${config.entry}] ${error.message}`);
+          return reject();
+        }
 
-        resolve();
+        this.log.verbose(`[${config.entry}] Webpack build complete.`);
+        resolve({ config, compiler });
       });
     });
+  };
+
+  watch = async (
+    config: webpack.Configuration,
+    _compiler: webpack.Compiler
+  ) => {
+    this.log.verbose(`[${config.entry}] TODO: Watching for changes...`);
+  };
+
+  handleWebpackError = (
+    _config: webpack.Configuration,
+    error: Error | null | undefined
+  ) => {
+    if (!error) {
+      return;
+    }
+
+    throw new Error(error.message);
+  };
+
+  handleWebpackStats = (
+    _config: webpack.Configuration,
+    stats?: webpack.Stats
+  ) => {
+    if (!stats) {
+      throw new Error(`Webpack did not emit stats.`);
+    }
+
+    const statsJson = stats.toJson();
+
+    const { errors, warnings } = statsJson;
+
+    if (errors && errors.length > 0) {
+      throw new Error(`Webpack failed to compile:\n${errors.join("\n\n")}`);
+    }
+
+    if (warnings && warnings.length > 0) {
+      const message = `Webpack compiled with warnings:\n${warnings.join(
+        "\n\n"
+      )}`;
+      if (process.env.CI) {
+        throw new Error(message);
+      } else {
+        this.log.warning(message);
+      }
+    }
   };
 }
 

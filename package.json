@@ -18,10 +18,10 @@
   },
   "dependencies": {
     "react-scripts": "^5.0.1",
-    "typescript": ">=5",
-    "webpack": "^5.90.0"
+    "typescript": ">=5"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "@types/node": ">=16",
     "@types/webpack": "^5.28.5"
   }
