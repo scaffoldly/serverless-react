@@ -181,16 +181,10 @@ class ServerlessReact {
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
         const { compiler } = await this.build();
-        const destination =
-          this.serverless.service.custom?.["serverless-offline"]?.location;
-        console.log("!!! bos destination", destination);
+        await this.copy(
+          this.serverless.service.custom?.["serverless-offline"]?.location
+        );
         await this.watch(compiler);
-      },
-      "after:offline:start": async () => {
-        this.log.verbose("after:offline:start");
-        const destination =
-          this.serverless.service.custom?.["serverless-offline"]?.location;
-        await this.copy(destination);
       },
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
