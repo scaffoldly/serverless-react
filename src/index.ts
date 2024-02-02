@@ -135,6 +135,8 @@ class ServerlessReact {
       this.options = {};
     }
 
+    console.log("!!! this.serverless", this.serverless);
+
     this.commands = {
       react: {
         usage: "Bundle React",
