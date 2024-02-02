@@ -273,28 +273,29 @@ class ServerlessReact {
     this.log.verbose(
       `[${this.webpackConfig.entry}] Copying build artifacts...`
     );
-    console.log("!!! destination", destination);
-    console.log("!!! getAllFunctions", this.service.getAllFunctions());
 
-    // const output = path.join(
-    //   this.serverlessConfig.servicePath,
-    //   this.pluginConfig.outputDirectory || ".react"
-    // );
+    if (!destination) {
+      throw new Error(`[${this.webpackConfig.entry}] No destination provided.`);
+    }
 
-    // const functions = this.service.getAllFunctions();
+    const fromDir = this.webpackConfig.output?.path;
 
-    // for (const [functionAlias, fn] of Object.entries(finctions)) {
-    //   const functionConfig = this.service.getFunction(functionName);
-    //   const functionPath = path.join(
-    //     this.serverlessConfig.servicePath,
-    //     functionConfig.name
-    //   );
+    if (!fromDir) {
+      throw new Error(
+        `[${this.webpackConfig.entry}] No output path in webpack config.`
+      );
+    }
 
-    //   if (fs.existsSync(functionPath)) {
-    //     this.log.verbose(`Copying to ${functionPath}`);
-    //     fs.copySync(output, functionPath);
-    //   }
-    // }
+    const toDir = path.join(
+      this.serverlessConfig.servicePath,
+      `${destination}/public`
+    );
+
+    fs.cpSync(fromDir, toDir, { recursive: true });
+
+    this.log.verbose(
+      `[${this.webpackConfig.entry}] Copied build artifacts to ${toDir}.`
+    );
   };
 
   watch = async (_compiler: webpack.Compiler) => {
