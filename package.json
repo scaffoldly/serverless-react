@@ -1,6 +1,6 @@
 {
   "name": "serverless-react",
-  "version": "0.2.2-12",
+  "version": "0.2.2-13",
   "engines": {
     "node": ">=16"
   },
