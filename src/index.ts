@@ -181,6 +181,9 @@ class ServerlessReact {
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
         const { compiler } = await this.build();
+        const destination =
+          this.serverless.service.custom?.["serverless-offline"]?.location;
+        console.log("!!! bos destination", destination);
         await this.watch(compiler);
       },
       "after:offline:start": async () => {
