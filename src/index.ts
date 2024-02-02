@@ -1,5 +1,5 @@
 import path from "path";
-import webpack, { Configuration } from "webpack";
+import webpack from "webpack";
 import fs from "fs-extra";
 
 type PluginName = "react";
@@ -8,7 +8,7 @@ const PLUGIN_NAME: PluginName = "react";
 type PluginConfig = {
   webpackConfig?: string; // Default is node_modules/react-scripts/config/webpack.config.js
   // entryPoint?: string; // Default is ./src/index.js
-  // outputDirectory?: string; // Default is .react
+  outputDirectory?: string; // Default is .react
   // keepOutputDirectory?: boolean; // Default is false, TODO: implement
 };
 
@@ -32,7 +32,10 @@ type PluginCommands = {
 };
 
 type ServerlessCustom = {
-  [key in PluginName]?: PluginConfig;
+  react?: PluginConfig;
+  "serverless-offline"?: {
+    location?: string;
+  };
 };
 
 type ServerlessService = {
@@ -105,6 +108,17 @@ class ServerlessReact {
   service: ServerlessService;
   pluginConfig: PluginConfig;
 
+  _webpackConfig?: webpack.Configuration;
+  get webpackConfig(): webpack.Configuration {
+    if (!this._webpackConfig) {
+      throw new Error("Webpack config is not set");
+    }
+    return this._webpackConfig;
+  }
+  set webpackConfig(config: webpack.Configuration) {
+    this._webpackConfig = config;
+  }
+
   commands: PluginCommands;
   hooks: {
     [key: string]: () => Promise<void>;
@@ -152,6 +166,8 @@ class ServerlessReact {
       },
     };
 
+    // TODO: find where build artifacts are stored
+    //       - copy .react to that location
     this.hooks = {
       initialize: async () => {},
       "react:validate": async () => {
@@ -162,13 +178,14 @@ class ServerlessReact {
       },
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
-        const { config, compiler } = await this.build();
-        await this.watch(config, compiler);
+        const { compiler } = await this.build();
+        await this.watch(compiler);
       },
-      "before:offline:start:init": async () => {
-        this.log.verbose("before:offline:start:init");
-        const { config, compiler } = await this.build();
-        await this.watch(config, compiler);
+      "after:offline:start": async () => {
+        this.log.verbose("after:offline:start");
+        const destination =
+          this.serverless.service.custom?.["serverless-offline"]?.location;
+        await this.copy(destination);
       },
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
@@ -180,7 +197,6 @@ class ServerlessReact {
   }
 
   build = async (): Promise<{
-    config: webpack.Configuration;
     compiler: webpack.Compiler;
   }> => {
     // TODO Check if react-scripts exists
@@ -207,60 +223,88 @@ class ServerlessReact {
         "node_modules/react-scripts/config/webpack.config.js"
     ));
 
-    const config: Configuration = configFactory("production");
+    this.webpackConfig = configFactory("production");
 
-    if (!config.output) {
+    if (!this.webpackConfig.output) {
       throw new Error("No output config in webpack config");
     }
 
-    config.output.path = path.join(
+    this.webpackConfig.output.path = path.join(
       this.serverlessConfig.servicePath,
       `.${PLUGIN_NAME}`
     );
 
-    fs.emptyDirSync(config.output.path);
-    fs.copySync(paths.appPublic, config.output.path, {
+    fs.emptyDirSync(this.webpackConfig.output.path);
+    fs.copySync(paths.appPublic, this.webpackConfig.output.path, {
       dereference: true,
       filter: (file) => file !== paths.appHtml,
     });
 
-    const compiler = webpack(config);
+    const compiler = webpack(this.webpackConfig);
 
     return new Promise((resolve, reject) => {
-      this.log.verbose(`[${config.entry}] Starting webpack build...`);
+      this.log.verbose(
+        `[${this.webpackConfig.entry}] Starting webpack build...`
+      );
 
       compiler.run((err, stats) => {
         try {
-          this.handleWebpackError(config, err);
+          this.handleWebpackError(err);
         } catch (error: any) {
-          this.log.error(`[${config.entry}] ${error.message}`);
+          this.log.error(`[${this.webpackConfig.entry}] ${error.message}`);
           return reject();
         }
 
         try {
-          this.handleWebpackStats(config, stats);
+          this.handleWebpackStats(stats);
         } catch (error: any) {
-          this.log.error(`[${config.entry}] ${error.message}`);
+          this.log.error(`[${this.webpackConfig.entry}] ${error.message}`);
           return reject();
         }
 
-        this.log.verbose(`[${config.entry}] Webpack build complete.`);
-        resolve({ config, compiler });
+        this.log.verbose(
+          `[${this.webpackConfig.entry}] Webpack build complete.`
+        );
+        resolve({ compiler });
       });
     });
   };
 
-  watch = async (
-    config: webpack.Configuration,
-    _compiler: webpack.Compiler
-  ) => {
-    this.log.verbose(`[${config.entry}] TODO: Watching for changes...`);
+  copy = async (destination?: string) => {
+    this.log.verbose(
+      `[${this.webpackConfig.entry}] Copying build artifacts...`
+    );
+    console.log("!!! destination", destination);
+    console.log("!!! getAllFunctions", this.service.getAllFunctions());
+
+    // const output = path.join(
+    //   this.serverlessConfig.servicePath,
+    //   this.pluginConfig.outputDirectory || ".react"
+    // );
+
+    // const functions = this.service.getAllFunctions();
+
+    // for (const [functionAlias, fn] of Object.entries(finctions)) {
+    //   const functionConfig = this.service.getFunction(functionName);
+    //   const functionPath = path.join(
+    //     this.serverlessConfig.servicePath,
+    //     functionConfig.name
+    //   );
+
+    //   if (fs.existsSync(functionPath)) {
+    //     this.log.verbose(`Copying to ${functionPath}`);
+    //     fs.copySync(output, functionPath);
+    //   }
+    // }
   };
 
-  handleWebpackError = (
-    _config: webpack.Configuration,
-    error: Error | null | undefined
-  ) => {
+  watch = async (_compiler: webpack.Compiler) => {
+    this.log.verbose(
+      `[${this.webpackConfig.entry}] TODO: Watching for changes...`
+    );
+  };
+
+  handleWebpackError = (error: Error | null | undefined) => {
     if (!error) {
       return;
     }
@@ -268,10 +312,7 @@ class ServerlessReact {
     throw new Error(error.message);
   };
 
-  handleWebpackStats = (
-    _config: webpack.Configuration,
-    stats?: webpack.Stats
-  ) => {
+  handleWebpackStats = (stats?: webpack.Stats) => {
     if (!stats) {
       throw new Error(`Webpack did not emit stats.`);
     }
