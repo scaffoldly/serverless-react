@@ -188,6 +188,10 @@ class ServerlessReact {
       },
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
+        await this.build();
+        await this.copy(
+          this.serverless.service.custom?.["serverless-offline"]?.location
+        );
       },
       "after:package:createDeploymentArtifacts": async () => {
         this.log.verbose("after:package:createDeploymentArtifacts");
