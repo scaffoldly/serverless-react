@@ -32,6 +32,7 @@ type PluginCommands = {
 };
 
 type ServerlessCustom = {
+  esbuild?: any;
   react?: PluginConfig;
   "serverless-offline"?: {
     location?: string;
@@ -189,9 +190,13 @@ class ServerlessReact {
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
         await this.build();
-        await this.copy(
-          this.serverless.service.custom?.["serverless-offline"]?.location
+        console.log(
+          "!!! this.serverless.service.custom.esbuild",
+          this.serverless.service.custom?.esbuild
         );
+        // await this.copy(
+        //   this.serverless.service.custom?.["serverless-offline"]?.location
+        // );
       },
       "after:package:createDeploymentArtifacts": async () => {
         this.log.verbose("after:package:createDeploymentArtifacts");
