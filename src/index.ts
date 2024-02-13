@@ -194,9 +194,8 @@ class ServerlessReact {
           "!!! this.serverless.service.custom.esbuild",
           this.serverless.service.custom?.esbuild
         );
-        // await this.copy(
-        //   this.serverless.service.custom?.["serverless-offline"]?.location
-        // );
+        // TODO: handle package individually?
+        await this.copy(".serverless");
       },
       "after:package:createDeploymentArtifacts": async () => {
         this.log.verbose("after:package:createDeploymentArtifacts");
