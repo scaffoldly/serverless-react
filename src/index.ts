@@ -207,6 +207,19 @@ class ServerlessReact {
       "after:package:createDeploymentArtifacts": async () => {
         this.log.verbose("after:package:createDeploymentArtifacts");
       },
+      "before:deploy:function:packageFunction": async () => {
+        this.log.verbose("before:deploy:function:packageFunction");
+        await this.build();
+        const { esbuild } = this.serverless.service.custom || {};
+        if (esbuild) {
+          const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
+          const outputBuildFolder = esbuild.outputBuildFolder || ".build";
+          await this.copy(path.join(outputWorkFolder, outputBuildFolder));
+        }
+      },
+      "after:deploy:function:packageFunction": async () => {
+        this.log.verbose("after:deploy:function:packageFunction");
+      },
     };
   }
 
