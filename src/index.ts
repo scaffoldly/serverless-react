@@ -32,7 +32,10 @@ type PluginCommands = {
 };
 
 type ServerlessCustom = {
-  esbuild?: any;
+  esbuild?: {
+    outputWorkFolder?: string;
+    outputBuildFolder?: string;
+  };
   react?: PluginConfig;
   "serverless-offline"?: {
     location?: string;
@@ -183,6 +186,7 @@ class ServerlessReact {
         this.log.verbose("before:offline:start");
         const { compiler } = await this.build();
         await this.copy(
+          // TODO: Might be unnecessary when running express static
           this.serverless.service.custom?.["serverless-offline"]?.location
         );
         await this.watch(compiler);
@@ -190,17 +194,22 @@ class ServerlessReact {
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
         await this.build();
-        console.log(
-          "!!! this.serverless.service.custom.esbuild",
-          this.serverless.service.custom?.esbuild
-        );
-        // TODO: handle package individually?
-        await this.copy(".serverless");
+        const { esbuild } = this.serverless.service.custom || {};
+        if (esbuild) {
+          const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
+          const outputBuildFolder = esbuild.outputBuildFolder || ".build";
+          await this.copy(path.join(outputWorkFolder, outputBuildFolder));
+        }
+        // TODO Support serverless-webpack
       },
       "after:package:createDeploymentArtifacts": async () => {
         this.log.verbose("after:package:createDeploymentArtifacts");
       },
     };
+  }
+
+  get outputDirectory() {
+    return this.pluginConfig.outputDirectory || `.${PLUGIN_NAME}`;
   }
 
   build = async (): Promise<{
@@ -238,7 +247,7 @@ class ServerlessReact {
 
     this.webpackConfig.output.path = path.join(
       this.serverlessConfig.servicePath,
-      `.${PLUGIN_NAME}`
+      this.outputDirectory
     );
 
     fs.emptyDirSync(this.webpackConfig.output.path);
@@ -296,7 +305,7 @@ class ServerlessReact {
 
     const toDir = path.join(
       this.serverlessConfig.servicePath,
-      `${destination}/public`
+      `${destination}/${this.outputDirectory}`
     );
 
     fs.cpSync(fromDir, toDir, { recursive: true });
