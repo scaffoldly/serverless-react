@@ -185,10 +185,12 @@ class ServerlessReact {
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
         const { compiler } = await this.build();
-        await this.copy(
-          // TODO: Might be unnecessary when running express static
-          this.serverless.service.custom?.["serverless-offline"]?.location
-        );
+        const { esbuild } = this.serverless.service.custom || {};
+        if (esbuild) {
+          const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
+          const outputBuildFolder = esbuild.outputBuildFolder || ".build";
+          await this.copy(path.join(outputWorkFolder, outputBuildFolder));
+        }
         await this.watch(compiler);
       },
       "before:package:createDeploymentArtifacts": async () => {
