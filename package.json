@@ -16,11 +16,14 @@
     "build": "tsc",
     "postinstall": "yarn build"
   },
-  "dependencies": {
+  "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/node": ">=16",
     "@types/webpack": "^5.28.5",
-    "react-scripts": "^5.0.1",
     "typescript": ">=5"
+  },
+  "peerDependencies": {
+    "serverless": ">=3.0.0",
+    "react-scripts": "5.0.1"
   }
 }
