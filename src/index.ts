@@ -6,7 +6,6 @@ type PluginName = "react";
 const PLUGIN_NAME: PluginName = "react";
 
 type PluginConfig = {
-  webpackConfig?: string; // Default is node_modules/react-scripts/config/webpack.config.js
   entryPoint?: string; // Default is ./src/index.js
   publicDirectory?: string; // Default is ./public
   outputDirectory?: string; // Default is .react
@@ -208,13 +207,18 @@ class ServerlessReact {
 
     require(path.join(
       this.serverlessConfig.servicePath,
-      this.pluginConfig.webpackConfig || "node_modules/react-scripts/config/env"
+      "node_modules",
+      "react-scripts",
+      "config",
+      "env"
     ));
 
     const paths = require(path.join(
       this.serverlessConfig.servicePath,
-      this.pluginConfig.webpackConfig ||
-        "node_modules/react-scripts/config/paths"
+      "node_modules",
+      "react-scripts",
+      "config",
+      "paths"
     ));
 
     if (this.pluginConfig.entryPoint) {
@@ -240,8 +244,10 @@ class ServerlessReact {
 
     const configFactory = require(path.join(
       this.serverlessConfig.servicePath,
-      this.pluginConfig.webpackConfig ||
-        "node_modules/react-scripts/config/webpack.config.js"
+      "node_modules",
+      "react-scripts",
+      "config",
+      "webpack.config.js"
     ));
 
     const { checkBrowsers } = require("react-dev-utils/browsersHelper");
@@ -254,6 +260,7 @@ class ServerlessReact {
     }
 
     this.webpackConfig.output.path = this.outputPath;
+    this.log.verbose(`Webpack output path: ${this.webpackConfig.output.path}`);
 
     // TODO: Watch paths.appPublic?
     fs.emptyDirSync(this.webpackConfig.output.path);
