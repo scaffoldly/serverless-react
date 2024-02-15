@@ -10,6 +10,7 @@ type PluginConfig = {
   entryPoint?: string; // Default is ./src/index.js
   publicDirectory?: string; // Default is ./public
   outputDirectory?: string; // Default is .react
+  reloadHandler?: boolean; // Default is false
   // keepOutputDirectory?: boolean; // Default is false, TODO: implement
 };
 
@@ -186,23 +187,15 @@ class ServerlessReact {
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
         const { compiler } = await this.build();
-        const { esbuild } = this.serverless.service.custom || {};
-        if (esbuild) {
-          const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
-          const outputBuildFolder = esbuild.outputBuildFolder || ".build";
-          await this.copy(path.join(outputWorkFolder, outputBuildFolder));
+        await this.copy();
+        if (this.pluginConfig.reloadHandler) {
+          await this.watch(compiler);
         }
-        await this.watch(compiler);
       },
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
         await this.build();
-        const { esbuild } = this.serverless.service.custom || {};
-        if (esbuild) {
-          const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
-          const outputBuildFolder = esbuild.outputBuildFolder || ".build";
-          await this.copy(path.join(outputWorkFolder, outputBuildFolder));
-        }
+        await this.copy();
         // TODO Support serverless-webpack
       },
       "after:package:createDeploymentArtifacts": async () => {
@@ -310,13 +303,27 @@ class ServerlessReact {
     });
   };
 
-  copy = async (destination?: string) => {
+  copy = async () => {
+    let destination: string | undefined = undefined;
+
+    const { esbuild } = this.serverless.service.custom || {};
+
+    if (esbuild) {
+      const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
+      const outputBuildFolder = esbuild.outputBuildFolder || ".build";
+      destination = path.join(outputWorkFolder, outputBuildFolder);
+    }
+
+    // TODO Support serverless-webpack and standard serverless
+
     this.log.verbose(
       `[${this.webpackConfig.entry}] Copying build artifacts...`
     );
 
     if (!destination) {
-      throw new Error(`[${this.webpackConfig.entry}] No destination provided.`);
+      throw new Error(
+        `[${this.webpackConfig.entry}] Unknown destination. This plugin only supports serverless-esbuild.`
+      );
     }
 
     const fromDir = this.webpackConfig.output?.path;
