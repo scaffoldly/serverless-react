@@ -11,7 +11,7 @@ type PluginConfig = {
   publicDirectory?: string; // Default is ./public
   outputDirectory?: string; // Default is .react
   reloadHandler?: boolean; // Default is false
-  // keepOutputDirectory?: boolean; // Default is false, TODO: implement
+  keepOutputDirectory?: boolean; // Default is false
 };
 
 type PluginCommands = {
@@ -72,42 +72,57 @@ type Serverless = {
 
 type Options = {
   verbose?: boolean;
+  log?: ServerlessLog;
 };
 
-type Log = ((message: string) => void) & {
+type ServerlessLog = ((message: string) => void) & {
   verbose: (message: string) => void;
   warning: (message: string) => void;
   error: (message: string) => void;
 };
 
-type Progress = {
-  get: () => {
-    update: (message: string) => void;
-    notice: (message: string) => void;
-    remove: () => void;
+class Log {
+  constructor(private options: Options) {}
+
+  static msg = (message: string) => {
+    return `[${PLUGIN_NAME}] ${message}`;
   };
-};
 
-const DEFAULT_LOG: Log = (message?: string) =>
-  console.log(`[${PLUGIN_NAME}] ${message}`);
-DEFAULT_LOG.verbose = (message?: string) =>
-  console.log(`[${PLUGIN_NAME}] ${message}`);
-DEFAULT_LOG.warning = (message?: string) =>
-  console.log(`[${PLUGIN_NAME}] ${message}`);
-DEFAULT_LOG.error = (message?: string) =>
-  console.log(`[${PLUGIN_NAME}] ${message}`);
+  log = (message: string) => {
+    if (this.options.log) {
+      this.options.log(Log.msg(message));
+    } else {
+      console.log(Log.msg(message));
+    }
+  };
 
-const DEFAULT_PROGRESS: Progress = {
-  get: () => ({
-    update: (message: string) => DEFAULT_LOG(message),
-    notice: (message: string) => DEFAULT_LOG(message),
-    remove: () => {},
-  }),
-};
+  verbose = (message: string) => {
+    if (this.options.log) {
+      this.options.log.verbose(Log.msg(message));
+    } else {
+      console.log(Log.msg(message));
+    }
+  };
+
+  warning = (message: string) => {
+    if (this.options.log) {
+      this.options.log.warning(Log.msg(message));
+    } else {
+      console.warn(Log.msg(message));
+    }
+  };
+
+  error = (message: string) => {
+    if (this.options.log) {
+      this.options.log.error(Log.msg(message));
+    } else {
+      console.error(Log.msg(message));
+    }
+  };
+}
 
 class ServerlessReact {
-  log = DEFAULT_LOG;
-  progress = DEFAULT_PROGRESS;
+  log: Log;
 
   serverless: Serverless;
   serverlessConfig: ServerlessConfig;
@@ -125,65 +140,22 @@ class ServerlessReact {
     this._webpackConfig = config;
   }
 
-  commands: PluginCommands;
+  commands?: PluginCommands;
   hooks: {
     [key: string]: () => Promise<void>;
   };
 
-  constructor(serverless: Serverless, protected options?: Options) {
+  constructor(serverless: Serverless, protected options: Options) {
     this.serverless = serverless;
     this.service = serverless.service;
     this.serverlessConfig = serverless.config;
     this.pluginConfig =
       (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
 
-    if (!this.options) {
-      this.options = {};
-    }
+    this.log = new Log(options);
 
-    console.log("!!! this.serverless", this.serverless);
-
-    this.commands = {
-      react: {
-        usage: "Bundle React",
-        lifecycleEvents: ["react"],
-        commands: {
-          validate: {
-            type: "entrypoint",
-            lifecycleEvents: ["validate"],
-          },
-          build: {
-            type: "entrypoint",
-            lifecycleEvents: ["build"],
-            commands: {
-              watch: {
-                type: "entrypoint",
-                lifecycleEvents: ["build"],
-              },
-            },
-          },
-          package: {
-            type: "entrypoint",
-            lifecycleEvents: [
-              "packExternalModules",
-              "packageModules",
-              "copyExistingArtifacts",
-            ],
-          },
-        },
-      },
-    };
-
-    // TODO: find where build artifacts are stored
-    //       - copy .react to that location
     this.hooks = {
       initialize: async () => {},
-      "react:validate": async () => {
-        this.log.verbose("react:validate");
-      },
-      "react:build": async () => {
-        this.log.verbose("react:build");
-      },
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
         const { compiler } = await this.build();
@@ -196,10 +168,10 @@ class ServerlessReact {
         this.log.verbose("before:package:createDeploymentArtifacts");
         await this.build();
         await this.copy();
-        // TODO Support serverless-webpack
       },
       "after:package:createDeploymentArtifacts": async () => {
         this.log.verbose("after:package:createDeploymentArtifacts");
+        await this.clean();
       },
     };
   }
@@ -316,22 +288,18 @@ class ServerlessReact {
 
     // TODO Support serverless-webpack and standard serverless
 
-    this.log.verbose(
-      `[${this.webpackConfig.entry}] Copying build artifacts...`
-    );
+    this.log.verbose(`Copying build artifacts...`);
 
     if (!destination) {
       throw new Error(
-        `[${this.webpackConfig.entry}] Unknown destination. This plugin only supports serverless-esbuild.`
+        `Unknown destination. This plugin only supports serverless-esbuild.`
       );
     }
 
     const fromDir = this.webpackConfig.output?.path;
 
     if (!fromDir) {
-      throw new Error(
-        `[${this.webpackConfig.entry}] No output path in webpack config.`
-      );
+      throw new Error(`No output path in webpack config.`);
     }
 
     const toDir = path.join(
@@ -341,15 +309,18 @@ class ServerlessReact {
 
     fs.cpSync(fromDir, toDir, { recursive: true });
 
-    this.log.verbose(
-      `[${this.webpackConfig.entry}] Copied build artifacts to ${toDir}.`
+    this.log.verbose(`Copied build artifacts to ${toDir}.`);
+  };
+
+  clean = async () => {
+    this.log.verbose(`Cleaning up ${this.outputDirectory}...`);
+    fs.removeSync(
+      path.join(this.serverlessConfig.servicePath, this.outputDirectory)
     );
   };
 
   watch = async (_compiler: webpack.Compiler) => {
-    this.log.verbose(
-      `[${this.webpackConfig.entry}] TODO: Watching for changes...`
-    );
+    this.log.verbose(`TODO: Watching for changes...`);
   };
 
   handleWebpackError = (error: Error | null | undefined) => {
