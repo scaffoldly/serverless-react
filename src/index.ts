@@ -315,8 +315,27 @@ class ServerlessReact {
     );
   };
 
-  watch = async (_compiler: webpack.Compiler) => {
-    this.log.verbose(`TODO: Watching for changes...`);
+  watch = async (compiler: webpack.Compiler) => {
+    this.log.verbose(`Watching for changes...`);
+    compiler.watch({ poll: 3000 }, (err, stats) => {
+      try {
+        this.handleWebpackError(err);
+      } catch (error: any) {
+        this.log.error(error.message);
+        return;
+      }
+
+      try {
+        this.handleWebpackStats(stats);
+      } catch (error: any) {
+        this.log.error(error.message);
+        return;
+      }
+
+      this.copy().then(() => {
+        this.log.verbose(`Finished watch cycle.`);
+      });
+    });
   };
 
   handleWebpackError = (error: Error | null | undefined) => {
