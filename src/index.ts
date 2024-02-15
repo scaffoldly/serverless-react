@@ -248,28 +248,24 @@ class ServerlessReact {
     const compiler = webpack(this.webpackConfig);
 
     return new Promise((resolve, reject) => {
-      this.log.verbose(
-        `[${this.webpackConfig.entry}] Starting webpack build...`
-      );
+      this.log.verbose(`Starting webpack build...`);
 
       compiler.run((err, stats) => {
         try {
           this.handleWebpackError(err);
         } catch (error: any) {
-          this.log.error(`[${this.webpackConfig.entry}] ${error.message}`);
+          this.log.error(error.message);
           return reject();
         }
 
         try {
           this.handleWebpackStats(stats);
         } catch (error: any) {
-          this.log.error(`[${this.webpackConfig.entry}] ${error.message}`);
+          this.log.error(error.message);
           return reject();
         }
 
-        this.log.verbose(
-          `[${this.webpackConfig.entry}] Webpack build complete.`
-        );
+        this.log.verbose(`Webpack build complete.`);
         resolve({ compiler });
       });
     });
