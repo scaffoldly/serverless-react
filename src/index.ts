@@ -7,7 +7,8 @@ const PLUGIN_NAME: PluginName = "react";
 
 type PluginConfig = {
   webpackConfig?: string; // Default is node_modules/react-scripts/config/webpack.config.js
-  // entryPoint?: string; // Default is ./src/index.js
+  entryPoint?: string; // Default is ./src/index.js
+  publicDirectory?: string; // Default is ./public
   outputDirectory?: string; // Default is .react
   // keepOutputDirectory?: boolean; // Default is false, TODO: implement
 };
@@ -207,19 +208,6 @@ class ServerlessReact {
       "after:package:createDeploymentArtifacts": async () => {
         this.log.verbose("after:package:createDeploymentArtifacts");
       },
-      "before:deploy:function:packageFunction": async () => {
-        this.log.verbose("before:deploy:function:packageFunction");
-        await this.build();
-        const { esbuild } = this.serverless.service.custom || {};
-        if (esbuild) {
-          const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
-          const outputBuildFolder = esbuild.outputBuildFolder || ".build";
-          await this.copy(path.join(outputWorkFolder, outputBuildFolder));
-        }
-      },
-      "after:deploy:function:packageFunction": async () => {
-        this.log.verbose("after:deploy:function:packageFunction");
-      },
     };
   }
 
@@ -245,14 +233,35 @@ class ServerlessReact {
         "node_modules/react-scripts/config/paths"
     ));
 
-    const { checkBrowsers } = require("react-dev-utils/browsersHelper");
-    await checkBrowsers(paths.appPath, false);
+    if (this.pluginConfig.entryPoint) {
+      paths.appIndexJs = path.join(
+        this.serverlessConfig.servicePath,
+        this.pluginConfig.entryPoint
+      );
+      paths.appSrc = path.dirname(paths.appIndexJs);
+      // configFactory.paths = paths;
+      // TODO: Other things like:
+      // - paths.testsSetup
+      // - paths.proxySetup
+      // - paths.swSrc
+    }
+
+    if (this.pluginConfig.publicDirectory) {
+      paths.appPublic = path.join(
+        this.serverlessConfig.servicePath,
+        this.pluginConfig.publicDirectory
+      );
+      paths.appHtml = path.join(paths.appPublic, "index.html");
+    }
 
     const configFactory = require(path.join(
       this.serverlessConfig.servicePath,
       this.pluginConfig.webpackConfig ||
         "node_modules/react-scripts/config/webpack.config.js"
     ));
+
+    const { checkBrowsers } = require("react-dev-utils/browsersHelper");
+    await checkBrowsers(paths.appPath, false);
 
     this.webpackConfig = configFactory("production");
 
