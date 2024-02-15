@@ -20,25 +20,6 @@ type Paths = {
   appSrc: string;
 };
 
-type PluginCommands = {
-  [key in PluginName]: {
-    usage: string;
-    lifecycleEvents: string[];
-    commands: {
-      [key: string]: {
-        type: string;
-        lifecycleEvents: string[];
-        commands?: {
-          [key: string]: {
-            type: string;
-            lifecycleEvents: string[];
-          };
-        };
-      };
-    };
-  };
-};
-
 type ServerlessCustom = {
   esbuild?: {
     outputWorkFolder?: string;
@@ -132,7 +113,6 @@ class ServerlessReact {
 
   serverless: Serverless;
   serverlessConfig: ServerlessConfig;
-  service: ServerlessService;
   pluginConfig: PluginConfig;
 
   paths?: Paths;
@@ -147,17 +127,17 @@ class ServerlessReact {
     this._webpackConfig = config;
   }
 
-  commands?: PluginCommands;
   hooks: {
     [key: string]: () => Promise<void>;
   };
 
   constructor(serverless: Serverless, protected options: Options) {
     this.serverless = serverless;
-    this.service = serverless.service;
     this.serverlessConfig = serverless.config;
     this.pluginConfig =
-      (this.service.custom && this.service.custom[PLUGIN_NAME]) || {};
+      (this.serverless.service.custom &&
+        this.serverless.service.custom[PLUGIN_NAME]) ||
+      {};
 
     this.log = new Log(options);
 
@@ -166,7 +146,6 @@ class ServerlessReact {
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
         const { compiler } = await this.build();
-        // await this.copy();
         if (this.pluginConfig.reloadHandler) {
           await this.watch(compiler);
         }
@@ -174,11 +153,6 @@ class ServerlessReact {
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
         await this.build();
-        // await this.copy();
-      },
-      "after:package:createDeploymentArtifacts": async () => {
-        this.log.verbose("after:package:createDeploymentArtifacts");
-        // await this.clean();
       },
     };
   }
