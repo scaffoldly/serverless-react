@@ -12,6 +12,14 @@ type PluginConfig = {
   reloadHandler?: boolean; // Default is false
 };
 
+type Paths = {
+  appPath: string;
+  appPublic: string;
+  appHtml: string;
+  appIndexJs: string;
+  appSrc: string;
+};
+
 type PluginCommands = {
   [key in PluginName]: {
     usage: string;
@@ -127,6 +135,7 @@ class ServerlessReact {
   service: ServerlessService;
   pluginConfig: PluginConfig;
 
+  paths?: Paths;
   _webpackConfig?: webpack.Configuration;
   get webpackConfig(): webpack.Configuration {
     if (!this._webpackConfig) {
@@ -242,6 +251,8 @@ class ServerlessReact {
       paths.appHtml = path.join(paths.appPublic, "index.html");
     }
 
+    this.paths = paths;
+
     const configFactory = require(path.join(
       this.serverlessConfig.servicePath,
       "node_modules",
@@ -264,10 +275,6 @@ class ServerlessReact {
 
     // TODO: Watch paths.appPublic?
     fs.emptyDirSync(this.webpackConfig.output.path);
-    fs.copySync(paths.appPublic, this.webpackConfig.output.path, {
-      dereference: true,
-      filter: (file) => file !== paths.appHtml,
-    });
 
     const compiler = webpack(this.webpackConfig);
 
@@ -276,84 +283,58 @@ class ServerlessReact {
 
       compiler.run((err, stats) => {
         try {
-          this.handleWebpackError(err);
+          this.webpackHandler(err, stats);
         } catch (error: any) {
           this.log.error(error.message);
-          return reject();
+          reject();
         }
 
-        try {
-          this.handleWebpackStats(stats);
-        } catch (error: any) {
-          this.log.error(error.message);
-          return reject();
-        }
-
-        this.log.verbose(`Webpack build complete.`);
         resolve({ compiler });
       });
     });
   };
 
-  // copy = async () => {
-  //   let destination: string | undefined = undefined;
+  copyStatic = async () => {
+    this.log.verbose(`Copying static files...`);
+    if (
+      !this.webpackConfig ||
+      !this.webpackConfig.output ||
+      !this.webpackConfig.output.path
+    ) {
+      throw new Error("No webpack config output path");
+    }
 
-  //   const { esbuild } = this.serverless.service.custom || {};
+    if (!this.paths) {
+      throw new Error("No paths");
+    }
 
-  //   if (esbuild) {
-  //     const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
-  //     const outputBuildFolder = esbuild.outputBuildFolder || ".build";
-  //     destination = path.join(outputWorkFolder, outputBuildFolder);
-  //   }
+    const { appHtml } = this.paths;
 
-  //   // TODO Support serverless-webpack and standard serverless
-
-  //   this.log.verbose(`Copying build artifacts...`);
-
-  //   if (!destination) {
-  //     throw new Error(
-  //       `Unknown destination. This plugin only supports serverless-esbuild.`
-  //     );
-  //   }
-
-  //   const fromDir = this.webpackConfig.output?.path;
-
-  //   if (!fromDir) {
-  //     throw new Error(`No output path in webpack config.`);
-  //   }
-
-  //   const toDir = path.join(
-  //     this.serverlessConfig.servicePath,
-  //     `${destination}/${this.outputDirectory}`
-  //   );
-
-  //   fs.cpSync(fromDir, toDir, { recursive: true });
-
-  //   this.log.verbose(`Copied build artifacts to ${toDir}.`);
-  // };
+    fs.copySync(this.paths.appPublic, this.webpackConfig.output.path, {
+      dereference: true,
+      filter: (file) => file !== appHtml,
+    });
+  };
 
   watch = async (compiler: webpack.Compiler) => {
     this.log.verbose(`Watching for changes...`);
-    compiler.watch({ poll: 3000 }, (err, stats) => {
+    compiler.watch({}, (err, stats) => {
+      this.log.verbose(`Webpack detected changes...`);
       try {
-        this.handleWebpackError(err);
+        this.webpackHandler(err, stats);
       } catch (error: any) {
         this.log.error(error.message);
         return;
       }
+    });
+  };
 
-      try {
-        this.handleWebpackStats(stats);
-      } catch (error: any) {
-        this.log.error(error.message);
-        return;
-      }
+  webpackHandler = (err?: Error | null, stats?: webpack.Stats) => {
+    this.handleWebpackError(err);
+    this.handleWebpackStats(stats);
 
-      this.log.verbose(`Finished watch cycle.`);
-
-      // this.copy().then(() => {
-      //   this.log.verbose(`Finished watch cycle.`);
-      // });
+    this.copyStatic().then(() => {
+      this.log.verbose(`Webpack build complete.`);
     });
   };
 
