@@ -11,7 +11,6 @@ type PluginConfig = {
   publicDirectory?: string; // Default is ./public
   outputDirectory?: string; // Default is .react
   reloadHandler?: boolean; // Default is false
-  keepOutputDirectory?: boolean; // Default is false
 };
 
 type PluginCommands = {
@@ -159,7 +158,7 @@ class ServerlessReact {
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
         const { compiler } = await this.build();
-        await this.copy();
+        // await this.copy();
         if (this.pluginConfig.reloadHandler) {
           await this.watch(compiler);
         }
@@ -167,17 +166,37 @@ class ServerlessReact {
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
         await this.build();
-        await this.copy();
+        // await this.copy();
       },
       "after:package:createDeploymentArtifacts": async () => {
         this.log.verbose("after:package:createDeploymentArtifacts");
-        await this.clean();
+        // await this.clean();
       },
     };
   }
 
-  get outputDirectory() {
-    return this.pluginConfig.outputDirectory || `.${PLUGIN_NAME}`;
+  get outputPath() {
+    let destination: string | undefined = undefined;
+
+    const { esbuild } = this.serverless.service.custom || {};
+
+    if (esbuild) {
+      const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
+      const outputBuildFolder = esbuild.outputBuildFolder || ".build";
+      destination = path.join(outputWorkFolder, outputBuildFolder);
+    }
+
+    if (!destination) {
+      throw new Error(
+        `Unknown destination. This plugin only supports serverless-esbuild.`
+      );
+    }
+
+    return path.join(
+      this.serverlessConfig.servicePath,
+      destination,
+      this.pluginConfig.outputDirectory || `.${PLUGIN_NAME}`
+    );
   }
 
   build = async (): Promise<{
@@ -234,11 +253,9 @@ class ServerlessReact {
       throw new Error("No output config in webpack config");
     }
 
-    this.webpackConfig.output.path = path.join(
-      this.serverlessConfig.servicePath,
-      this.outputDirectory
-    );
+    this.webpackConfig.output.path = this.outputPath;
 
+    // TODO: Watch paths.appPublic?
     fs.emptyDirSync(this.webpackConfig.output.path);
     fs.copySync(paths.appPublic, this.webpackConfig.output.path, {
       dereference: true,
@@ -271,49 +288,42 @@ class ServerlessReact {
     });
   };
 
-  copy = async () => {
-    let destination: string | undefined = undefined;
+  // copy = async () => {
+  //   let destination: string | undefined = undefined;
 
-    const { esbuild } = this.serverless.service.custom || {};
+  //   const { esbuild } = this.serverless.service.custom || {};
 
-    if (esbuild) {
-      const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
-      const outputBuildFolder = esbuild.outputBuildFolder || ".build";
-      destination = path.join(outputWorkFolder, outputBuildFolder);
-    }
+  //   if (esbuild) {
+  //     const outputWorkFolder = esbuild.outputWorkFolder || ".esbuild";
+  //     const outputBuildFolder = esbuild.outputBuildFolder || ".build";
+  //     destination = path.join(outputWorkFolder, outputBuildFolder);
+  //   }
 
-    // TODO Support serverless-webpack and standard serverless
+  //   // TODO Support serverless-webpack and standard serverless
 
-    this.log.verbose(`Copying build artifacts...`);
+  //   this.log.verbose(`Copying build artifacts...`);
 
-    if (!destination) {
-      throw new Error(
-        `Unknown destination. This plugin only supports serverless-esbuild.`
-      );
-    }
+  //   if (!destination) {
+  //     throw new Error(
+  //       `Unknown destination. This plugin only supports serverless-esbuild.`
+  //     );
+  //   }
 
-    const fromDir = this.webpackConfig.output?.path;
+  //   const fromDir = this.webpackConfig.output?.path;
 
-    if (!fromDir) {
-      throw new Error(`No output path in webpack config.`);
-    }
+  //   if (!fromDir) {
+  //     throw new Error(`No output path in webpack config.`);
+  //   }
 
-    const toDir = path.join(
-      this.serverlessConfig.servicePath,
-      `${destination}/${this.outputDirectory}`
-    );
+  //   const toDir = path.join(
+  //     this.serverlessConfig.servicePath,
+  //     `${destination}/${this.outputDirectory}`
+  //   );
 
-    fs.cpSync(fromDir, toDir, { recursive: true });
+  //   fs.cpSync(fromDir, toDir, { recursive: true });
 
-    this.log.verbose(`Copied build artifacts to ${toDir}.`);
-  };
-
-  clean = async () => {
-    this.log.verbose(`Cleaning up ${this.outputDirectory}...`);
-    fs.removeSync(
-      path.join(this.serverlessConfig.servicePath, this.outputDirectory)
-    );
-  };
+  //   this.log.verbose(`Copied build artifacts to ${toDir}.`);
+  // };
 
   watch = async (compiler: webpack.Compiler) => {
     this.log.verbose(`Watching for changes...`);
@@ -332,9 +342,11 @@ class ServerlessReact {
         return;
       }
 
-      this.copy().then(() => {
-        this.log.verbose(`Finished watch cycle.`);
-      });
+      this.log.verbose(`Finished watch cycle.`);
+
+      // this.copy().then(() => {
+      //   this.log.verbose(`Finished watch cycle.`);
+      // });
     });
   };
 
