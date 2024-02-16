@@ -1,11 +1,18 @@
 import path from "path";
-import webpack from "webpack";
+import {
+  Compiler as WebpackCompiler,
+  Configuration as WebpackConfiguration,
+  Stats as WebpackStats,
+} from "webpack";
 import fs from "fs-extra";
 
 type PluginName = "react";
 const PLUGIN_NAME: PluginName = "react";
 
+type BuildSystem = "react-scripts" | "vite";
+
 type PluginConfig = {
+  buildSystem?: BuildSystem; // Default will be detected on node_modules
   entryPoint?: string; // Default is ./src/index.js
   publicDirectory?: string; // Default is ./public
   outputDirectory?: string; // Default is .react
@@ -116,16 +123,6 @@ class ServerlessReact {
   pluginConfig: PluginConfig;
 
   paths?: Paths;
-  _webpackConfig?: webpack.Configuration;
-  get webpackConfig(): webpack.Configuration {
-    if (!this._webpackConfig) {
-      throw new Error("Webpack config is not set");
-    }
-    return this._webpackConfig;
-  }
-  set webpackConfig(config: webpack.Configuration) {
-    this._webpackConfig = config;
-  }
 
   hooks: {
     [key: string]: () => Promise<void>;
@@ -145,14 +142,11 @@ class ServerlessReact {
       initialize: async () => {},
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
-        const { compiler } = await this.build();
-        if (this.pluginConfig.reloadHandler) {
-          await this.watch(compiler);
-        }
+        await this.build(this.pluginConfig.reloadHandler || false);
       },
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
-        await this.build();
+        await this.build(false);
       },
     };
   }
@@ -181,10 +175,58 @@ class ServerlessReact {
     );
   }
 
-  build = async (): Promise<{
-    compiler: webpack.Compiler;
+  get buildSystem(): BuildSystem {
+    const vitePath = path.join(
+      this.serverlessConfig.servicePath,
+      "node_modules",
+      "vite"
+    );
+
+    if (
+      (!this.pluginConfig.buildSystem && fs.existsSync(vitePath)) ||
+      (this.pluginConfig.buildSystem === "vite" && fs.existsSync(vitePath))
+    ) {
+      return "vite";
+    }
+
+    const reactScriptsPath = path.join(
+      this.serverlessConfig.servicePath,
+      "node_modules",
+      "react-scripts"
+    );
+
+    if (
+      (!this.pluginConfig.buildSystem && fs.existsSync(reactScriptsPath)) ||
+      (this.pluginConfig.buildSystem === "react-scripts" &&
+        fs.existsSync(reactScriptsPath))
+    ) {
+      return "react-scripts";
+    }
+
+    throw new Error(
+      'Could not determine build system. Please set "react.buildSystem"'
+    );
+  }
+
+  build = async (watch: boolean): Promise<void> => {
+    if (this.buildSystem === "vite") {
+      await this.buildWithVite();
+    }
+
+    if (this.buildSystem === "react-scripts") {
+      const { config, compiler } = await this.buildWithWebpack();
+      if (watch) {
+        await this.watchWebpack(config, compiler);
+      }
+    }
+  };
+
+  buildWithVite = async (): Promise<void> => {};
+
+  buildWithWebpack = async (): Promise<{
+    config: WebpackConfiguration;
+    compiler: WebpackCompiler;
   }> => {
-    // TODO Check if react-scripts exists
     process.env.BABEL_ENV = "production";
     process.env.NODE_ENV = "production";
 
@@ -238,43 +280,40 @@ class ServerlessReact {
     const { checkBrowsers } = require("react-dev-utils/browsersHelper");
     await checkBrowsers(paths.appPath, false);
 
-    this.webpackConfig = configFactory("production");
+    const config = configFactory("production");
 
-    if (!this.webpackConfig.output) {
+    if (!config.output) {
       throw new Error("No output config in webpack config");
     }
 
-    this.webpackConfig.output.path = this.outputPath;
-    this.log.verbose(`Webpack output path: ${this.webpackConfig.output.path}`);
+    config.output.path = this.outputPath;
+    this.log.verbose(`Webpack output path: ${config.output.path}`);
 
     // TODO: Watch paths.appPublic?
-    fs.emptyDirSync(this.webpackConfig.output.path);
+    fs.emptyDirSync(config.output.path);
 
-    const compiler = webpack(this.webpackConfig);
+    const webpack = require("webpack");
+    const compiler = webpack(config) as WebpackCompiler;
 
     return new Promise((resolve, reject) => {
       this.log.verbose(`Starting webpack build...`);
 
       compiler.run((err, stats) => {
         try {
-          this.webpackHandler(err, stats);
+          this.webpackHandler(config, err, stats);
         } catch (error: any) {
           this.log.error(error.message);
           reject();
         }
 
-        resolve({ compiler });
+        resolve({ config, compiler });
       });
     });
   };
 
-  copyStatic = async () => {
+  copyStatic = async (config: WebpackConfiguration) => {
     this.log.verbose(`Copying static files...`);
-    if (
-      !this.webpackConfig ||
-      !this.webpackConfig.output ||
-      !this.webpackConfig.output.path
-    ) {
+    if (!config.output || !config.output.path) {
       throw new Error("No webpack config output path");
     }
 
@@ -284,18 +323,21 @@ class ServerlessReact {
 
     const { appHtml } = this.paths;
 
-    fs.copySync(this.paths.appPublic, this.webpackConfig.output.path, {
+    fs.copySync(this.paths.appPublic, config.output.path, {
       dereference: true,
       filter: (file) => file !== appHtml,
     });
   };
 
-  watch = async (compiler: webpack.Compiler) => {
+  watchWebpack = async (
+    config: WebpackConfiguration,
+    compiler: WebpackCompiler
+  ) => {
     this.log.verbose(`Watching for changes...`);
     compiler.watch({}, (err, stats) => {
       this.log.verbose(`Webpack detected changes...`);
       try {
-        this.webpackHandler(err, stats);
+        this.webpackHandler(config, err, stats);
       } catch (error: any) {
         this.log.error(error.message);
         return;
@@ -303,11 +345,15 @@ class ServerlessReact {
     });
   };
 
-  webpackHandler = (err?: Error | null, stats?: webpack.Stats) => {
+  webpackHandler = (
+    config: WebpackConfiguration,
+    err?: Error | null,
+    stats?: WebpackStats
+  ) => {
     this.handleWebpackError(err);
     this.handleWebpackStats(stats);
 
-    this.copyStatic().then(() => {
+    this.copyStatic(config).then(() => {
       this.log.verbose(`Webpack build complete.`);
     });
   };
@@ -320,7 +366,7 @@ class ServerlessReact {
     throw new Error(error.message);
   };
 
-  handleWebpackStats = (stats?: webpack.Stats) => {
+  handleWebpackStats = (stats?: WebpackStats) => {
     if (!stats) {
       throw new Error(`Webpack did not emit stats.`);
     }
