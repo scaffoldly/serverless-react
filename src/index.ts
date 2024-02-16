@@ -247,7 +247,7 @@ class ServerlessReact {
   };
 
   buildWithVite = async (): Promise<void> => {
-    const vite = require("vite");
+    const vite = (await import("vite")).default;
     await vite.build({});
   };
 
