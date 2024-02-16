@@ -248,7 +248,7 @@ class ServerlessReact {
 
   buildWithVite = async (): Promise<void> => {
     const vite = (await import("vite")).default;
-    await vite.build({});
+    await vite.build({ build: { outDir: this.outputPath } });
   };
 
   buildWithWebpack = async (): Promise<{
