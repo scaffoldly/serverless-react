@@ -177,7 +177,7 @@ class ServerlessReact {
   }
 
   get buildSystem(): BuildSystem {
-    let requiredModules: string[] | undefined = undefined;
+    let requiredModules: string[] = [];
     let { buildSystem } = this.pluginConfig;
 
     if (!buildSystem) {
@@ -203,15 +203,11 @@ class ServerlessReact {
     }
 
     if (buildSystem === "vite") {
-      requiredModules = ["vite"];
+      requiredModules.push("vite");
     }
 
     if (buildSystem === "react-scripts") {
-      requiredModules = ["react-scripts"];
-    }
-
-    if (!requiredModules) {
-      throw new Error(`Unknown build system: ${buildSystem}`);
+      requiredModules.push("react-scripts");
     }
 
     const hasModules = requiredModules.every((module) =>
