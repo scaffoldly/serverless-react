@@ -14,8 +14,7 @@ type BuildSystem = "vite" | "react-scripts";
 
 type PluginConfig = {
   buildSystem?: BuildSystem; // Default will be detected on node_modules
-  entryPoint?: string; // Default is ./src/index.js
-  publicDirectory?: string; // Default is ./public
+  entryPoint?: string; // Default is ./src/index (for react scripts) or ./index.html (for vite)
   outputDirectory?: string; // Default is .react
   reloadHandler?: boolean; // Default is false
 };
@@ -247,8 +246,17 @@ class ServerlessReact {
   };
 
   buildWithVite = async (): Promise<void> => {
-    const vite = (await import("vite")).default;
-    await vite.build({ build: { outDir: this.outputPath } });
+    const vite = await import("vite");
+    const { entryPoint } = this.pluginConfig;
+
+    await vite.build({
+      build: {
+        outDir: this.outputPath,
+        rollupOptions: {
+          input: { app: entryPoint ? entryPoint : "./index.html" },
+        },
+      },
+    });
   };
 
   buildWithWebpack = async (): Promise<{
@@ -287,13 +295,8 @@ class ServerlessReact {
       // - paths.swSrc
     }
 
-    if (this.pluginConfig.publicDirectory) {
-      paths.appPublic = path.join(
-        this.serverlessConfig.servicePath,
-        this.pluginConfig.publicDirectory
-      );
-      paths.appHtml = path.join(paths.appPublic, "index.html");
-    }
+    paths.appPublic = path.join(this.serverlessConfig.servicePath, "public");
+    paths.appHtml = path.join(paths.appPublic, "index.html");
 
     this.paths = paths;
 
