@@ -19,6 +19,7 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
+    "skipLibCheck": true,
 
     /* Additional Checks */
     "noUnusedLocals": true,
