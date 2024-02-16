@@ -2,7 +2,7 @@
   "name": "serverless-react",
   "version": "0.2.4",
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "description": "Serverless React Plugin",
   "author": "scaffold.ly",

@@ -4,12 +4,13 @@ import {
   Configuration as WebpackConfiguration,
   Stats as WebpackStats,
 } from "webpack";
+// import vite from "vite";
 import fs from "fs-extra";
 
 type PluginName = "react";
 const PLUGIN_NAME: PluginName = "react";
 
-type BuildSystem = "react-scripts" | "vite";
+type BuildSystem = "vite" | "react-scripts";
 
 type PluginConfig = {
   buildSystem?: BuildSystem; // Default will be detected on node_modules
@@ -221,7 +222,10 @@ class ServerlessReact {
     }
   };
 
-  buildWithVite = async (): Promise<void> => {};
+  buildWithVite = async (): Promise<void> => {
+    const vite = require("vite");
+    await vite.build({});
+  };
 
   buildWithWebpack = async (): Promise<{
     config: WebpackConfiguration;
