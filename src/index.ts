@@ -177,36 +177,64 @@ class ServerlessReact {
   }
 
   get buildSystem(): BuildSystem {
-    const vitePath = path.join(
-      this.serverlessConfig.servicePath,
-      "node_modules",
-      "vite"
-    );
+    let requiredModules: string[] | undefined = undefined;
+    let { buildSystem } = this.pluginConfig;
 
-    if (
-      (!this.pluginConfig.buildSystem && fs.existsSync(vitePath)) ||
-      (this.pluginConfig.buildSystem === "vite" && fs.existsSync(vitePath))
-    ) {
-      return "vite";
+    if (!buildSystem) {
+      if (
+        fs.existsSync(
+          path.join(this.serverlessConfig.servicePath, "node_modules", "vite")
+        )
+      ) {
+        buildSystem = "vite";
+      }
+
+      if (
+        fs.existsSync(
+          path.join(
+            this.serverlessConfig.servicePath,
+            "node_modules",
+            "react-scripts"
+          )
+        )
+      ) {
+        buildSystem = "react-scripts";
+      }
     }
 
-    const reactScriptsPath = path.join(
-      this.serverlessConfig.servicePath,
-      "node_modules",
-      "react-scripts"
-    );
-
-    if (
-      (!this.pluginConfig.buildSystem && fs.existsSync(reactScriptsPath)) ||
-      (this.pluginConfig.buildSystem === "react-scripts" &&
-        fs.existsSync(reactScriptsPath))
-    ) {
-      return "react-scripts";
+    if (buildSystem === "vite") {
+      requiredModules = ["vite"];
     }
 
-    throw new Error(
-      'Could not determine build system. Please set "react.buildSystem"'
+    if (buildSystem === "react-scripts") {
+      requiredModules = ["react-scripts"];
+    }
+
+    if (!requiredModules) {
+      throw new Error(`Unknown build system: ${buildSystem}`);
+    }
+
+    const hasModules = requiredModules.every((module) =>
+      fs.existsSync(
+        path.join(this.serverlessConfig.servicePath, "node_modules", module)
+      )
     );
+
+    if (!hasModules) {
+      throw new Error(
+        `Could not find required modules: ${requiredModules.join(
+          ", "
+        )}. Please ensure they are in your project dependencies.`
+      );
+    }
+
+    if (!buildSystem) {
+      throw new Error(
+        `Could not detect build system. Please set it using the custom.react.buildSystem property in serverless.yml.`
+      );
+    }
+
+    return buildSystem;
   }
 
   build = async (watch: boolean): Promise<void> => {
