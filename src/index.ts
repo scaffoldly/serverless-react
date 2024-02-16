@@ -234,7 +234,7 @@ class ServerlessReact {
 
   build = async (watch: boolean): Promise<void> => {
     if (this.buildSystem === "vite") {
-      await this.buildWithVite();
+      await this.buildWithVite(watch);
     }
 
     if (this.buildSystem === "react-scripts") {
@@ -245,7 +245,7 @@ class ServerlessReact {
     }
   };
 
-  buildWithVite = async (): Promise<void> => {
+  buildWithVite = async (watch: boolean): Promise<void> => {
     const vite = await import("vite");
     const { entryPoint } = this.pluginConfig;
 
@@ -255,6 +255,7 @@ class ServerlessReact {
         rollupOptions: {
           input: { app: entryPoint ? entryPoint : "./index.html" },
         },
+        watch: watch ? {} : undefined,
       },
     });
   };
