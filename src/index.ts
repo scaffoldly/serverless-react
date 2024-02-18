@@ -12,6 +12,8 @@ const PLUGIN_NAME: PluginName = "react";
 
 type BuildSystem = "vite" | "react-scripts";
 
+type BuildMode = "development" | "production";
+
 type ViteConfig = {
   configFile?: string; // Path to vite.config.[js|ts]
 };
@@ -143,17 +145,18 @@ class ServerlessReact {
 
     this.log = new Log(options);
 
-    console.log("!!!! process.env", process.env);
-
     this.hooks = {
       initialize: async () => {},
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
-        await this.build(this.pluginConfig.reloadHandler || false);
+        await this.build(
+          "development",
+          this.pluginConfig.reloadHandler || false
+        );
       },
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
-        await this.build(false);
+        await this.build("production", false);
       },
     };
   }
@@ -239,24 +242,25 @@ class ServerlessReact {
     return buildSystem;
   }
 
-  build = async (watch: boolean): Promise<void> => {
+  build = async (mode: BuildMode, watch: boolean): Promise<void> => {
     if (this.buildSystem === "vite") {
-      await this.buildWithVite(watch);
+      await this.buildWithVite(mode, watch);
     }
 
     if (this.buildSystem === "react-scripts") {
-      const { config, compiler } = await this.buildWithWebpack();
+      const { config, compiler } = await this.buildWithWebpack(mode);
       if (watch) {
         await this.watchWebpack(config, compiler);
       }
     }
   };
 
-  buildWithVite = async (watch: boolean): Promise<void> => {
+  buildWithVite = async (mode: BuildMode, watch: boolean): Promise<void> => {
     const vite = await import("vite");
     const { entryPoint } = this.pluginConfig;
 
     await vite.build({
+      mode,
       configFile: this.pluginConfig.vite?.configFile,
       build: {
         outDir: this.outputPath,
@@ -268,12 +272,14 @@ class ServerlessReact {
     });
   };
 
-  buildWithWebpack = async (): Promise<{
+  buildWithWebpack = async (
+    mode: BuildMode
+  ): Promise<{
     config: WebpackConfiguration;
     compiler: WebpackCompiler;
   }> => {
-    process.env.BABEL_ENV = "production";
-    process.env.NODE_ENV = "production";
+    process.env.BABEL_ENV = mode;
+    process.env.NODE_ENV = mode;
 
     require(path.join(
       this.serverlessConfig.servicePath,
