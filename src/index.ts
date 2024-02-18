@@ -1,10 +1,10 @@
 import path from "path";
 import {
+  // Just webpack types
   Compiler as WebpackCompiler,
   Configuration as WebpackConfiguration,
   Stats as WebpackStats,
 } from "webpack";
-// import vite from "vite";
 import fs from "fs-extra";
 
 type PluginName = "react";
@@ -12,11 +12,16 @@ const PLUGIN_NAME: PluginName = "react";
 
 type BuildSystem = "vite" | "react-scripts";
 
+type ViteConfig = {
+  configFile?: string; // Path to vite.config.[js|ts]
+};
+
 type PluginConfig = {
   buildSystem?: BuildSystem; // Default will be detected on node_modules
   entryPoint?: string; // Default is ./src/index (for react scripts) or ./index.html (for vite)
   outputDirectory?: string; // Default is .react
   reloadHandler?: boolean; // Default is false
+  vite?: ViteConfig;
 };
 
 type Paths = {
@@ -138,6 +143,8 @@ class ServerlessReact {
 
     this.log = new Log(options);
 
+    console.log("!!!! process.env", process.env);
+
     this.hooks = {
       initialize: async () => {},
       "before:offline:start": async () => {
@@ -250,6 +257,7 @@ class ServerlessReact {
     const { entryPoint } = this.pluginConfig;
 
     await vite.build({
+      configFile: this.pluginConfig.vite?.configFile,
       build: {
         outDir: this.outputPath,
         rollupOptions: {
