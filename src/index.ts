@@ -268,6 +268,7 @@ class ServerlessReact {
           input: { app: entryPoint ? entryPoint : "./index.html" },
         },
         watch: watch ? {} : undefined,
+        reportCompressedSize: this.options.verbose,
       },
     });
   };
