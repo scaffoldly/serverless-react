@@ -304,8 +304,12 @@ class ServerlessReact {
     console.log("!!! build", build);
     const { entryPoint } = this.pluginConfig;
 
+    let dir = entryPoint
+      ? path.join(this.serverlessConfig.servicePath, entryPoint)
+      : this.serverlessConfig.servicePath;
+
     await build(
-      entryPoint ? entryPoint : "./",
+      dir,
       false, // profile
       false, // debug
       true, // lint
