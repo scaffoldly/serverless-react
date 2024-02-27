@@ -300,7 +300,7 @@ class ServerlessReact {
       "next",
       "dist",
       "build"
-    ));
+    )).default;
     console.log("!!! build", build);
     const { entryPoint } = this.pluginConfig;
 
