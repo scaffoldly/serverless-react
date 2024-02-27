@@ -301,6 +301,7 @@ class ServerlessReact {
       "dist",
       "build"
     ));
+    console.log("!!! build", build);
     const { entryPoint } = this.pluginConfig;
 
     await build(
