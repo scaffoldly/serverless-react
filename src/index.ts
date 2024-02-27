@@ -314,8 +314,8 @@ class ServerlessReact {
       false, // debug
       false, // lint
       false, // noMangling
-      false, // appDirOnly
-      true, // turboNextBuild
+      true, // appDirOnly
+      false, // turboNextBuild
       "default"
     );
   };
