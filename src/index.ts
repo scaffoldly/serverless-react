@@ -272,7 +272,11 @@ class ServerlessReact {
   };
 
   buildWithVite = async (mode: BuildMode, watch: boolean): Promise<void> => {
-    const vite = await import("vite");
+    const vite = require(path.join(
+      this.serverlessConfig.servicePath,
+      "node_modules",
+      "vite"
+    ));
     const { entryPoint } = this.pluginConfig;
 
     await vite.build({
@@ -290,8 +294,13 @@ class ServerlessReact {
   };
 
   buildWithNext = async (_mode: BuildMode, _watch: boolean): Promise<void> => {
-    // const vite = await import("vite");
-    const build = (await import("next/dist/build")).default;
+    const build = require(path.join(
+      this.serverlessConfig.servicePath,
+      "node_modules",
+      "next",
+      "dist",
+      "build"
+    ));
     const { entryPoint } = this.pluginConfig;
 
     await build(
@@ -304,19 +313,6 @@ class ServerlessReact {
       false, // turboNextBuild
       "default"
     );
-
-    // await vite.build({
-    //   mode,
-    //   configFile: this.pluginConfig.vite?.configFile,
-    //   build: {
-    //     outDir: this.outputPath,
-    //     rollupOptions: {
-    //       input: { app: entryPoint ? entryPoint : "./index.html" },
-    //     },
-    //     watch: watch ? {} : undefined,
-    //     reportCompressedSize: this.options.verbose,
-    //   },
-    // });
   };
 
   buildWithWebpack = async (
