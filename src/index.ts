@@ -312,7 +312,7 @@ class ServerlessReact {
       dir,
       false, // profile
       false, // debug
-      true, // lint
+      false, // lint
       false, // noMangling
       false, // appDirOnly
       false, // turboNextBuild
