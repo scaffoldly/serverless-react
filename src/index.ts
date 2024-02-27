@@ -10,7 +10,7 @@ import fs from "fs-extra";
 type PluginName = "react";
 const PLUGIN_NAME: PluginName = "react";
 
-type BuildSystem = "vite" | "react-scripts";
+type BuildSystem = "vite" | "next" | "react-scripts";
 
 type BuildMode = "development" | "production";
 
@@ -200,6 +200,14 @@ class ServerlessReact {
 
       if (
         fs.existsSync(
+          path.join(this.serverlessConfig.servicePath, "node_modules", "next")
+        )
+      ) {
+        buildSystem = "next";
+      }
+
+      if (
+        fs.existsSync(
           path.join(
             this.serverlessConfig.servicePath,
             "node_modules",
@@ -213,6 +221,10 @@ class ServerlessReact {
 
     if (buildSystem === "vite") {
       requiredModules.push("vite");
+    }
+
+    if (buildSystem === "next") {
+      requiredModules.push("next");
     }
 
     if (buildSystem === "react-scripts") {
@@ -247,6 +259,10 @@ class ServerlessReact {
       await this.buildWithVite(mode, watch);
     }
 
+    if (this.buildSystem === "next") {
+      await this.buildWithNext(mode, watch);
+    }
+
     if (this.buildSystem === "react-scripts") {
       const { config, compiler } = await this.buildWithWebpack(mode);
       if (watch) {
@@ -271,6 +287,36 @@ class ServerlessReact {
         reportCompressedSize: this.options.verbose,
       },
     });
+  };
+
+  buildWithNext = async (_mode: BuildMode, _watch: boolean): Promise<void> => {
+    // const vite = await import("vite");
+    const build = (await import("next/dist/build")).default;
+    const { entryPoint } = this.pluginConfig;
+
+    await build(
+      entryPoint ? entryPoint : "./",
+      false, // profile
+      false, // debug
+      true, // lint
+      false, // noMangling
+      false, // appDirOnly
+      false, // turboNextBuild
+      "default"
+    );
+
+    // await vite.build({
+    //   mode,
+    //   configFile: this.pluginConfig.vite?.configFile,
+    //   build: {
+    //     outDir: this.outputPath,
+    //     rollupOptions: {
+    //       input: { app: entryPoint ? entryPoint : "./index.html" },
+    //     },
+    //     watch: watch ? {} : undefined,
+    //     reportCompressedSize: this.options.verbose,
+    //   },
+    // });
   };
 
   buildWithWebpack = async (
