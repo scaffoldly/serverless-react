@@ -281,6 +281,23 @@ class ServerlessReact {
         watch: watch ? {} : undefined,
         reportCompressedSize: this.options.verbose,
       },
+      customLogger: {
+        info: (message) => {
+          console.log(message);
+        },
+        warn: (message) => {
+          this.log.warning(message);
+        },
+        warnOnce: (message) => {
+          this.log.warning(message);
+        },
+        error: (message) => {
+          this.log.error(message);
+        },
+        clearScreen: () => {},
+        hasErrorLogged: () => false,
+        hasWarned: false,
+      },
     });
   };
 
