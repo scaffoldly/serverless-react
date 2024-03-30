@@ -6,6 +6,7 @@ import {
   Stats as WebpackStats,
 } from "webpack";
 import fs from "fs-extra";
+import { exit } from "process";
 
 type PluginName = "react";
 const PLUGIN_NAME: PluginName = "react";
@@ -147,14 +148,26 @@ class ServerlessReact {
       initialize: async () => {},
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
-        await this.build(
-          "development",
-          this.pluginConfig.reloadHandler || false
-        );
+        try {
+          await this.build(
+            "development",
+            this.pluginConfig.reloadHandler || false
+          );
+        } catch (e) {
+          throw e;
+        } finally {
+          exit(1);
+        }
       },
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
-        await this.build("production", false);
+        try {
+          await this.build("production", false);
+        } catch (e) {
+          throw e;
+        } finally {
+          exit(1);
+        }
       },
     };
   }
