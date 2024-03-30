@@ -154,7 +154,9 @@ class ServerlessReact {
             this.pluginConfig.reloadHandler || false
           );
         } catch (e) {
-          throw e;
+          if (e instanceof Error) {
+            this.log.error(e.message);
+          }
         } finally {
           exit(1);
         }
@@ -164,6 +166,9 @@ class ServerlessReact {
         try {
           await this.build("production", false);
         } catch (e) {
+          if (e instanceof Error) {
+            this.log.error(e.message);
+          }
           throw e;
         } finally {
           exit(1);
