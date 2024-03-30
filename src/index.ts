@@ -286,6 +286,7 @@ class ServerlessReact {
         watch: watch ? {} : undefined,
         reportCompressedSize: this.options.verbose,
       },
+      logLevel: "info",
       customLogger: {
         info: (message) => {
           console.log(message);
