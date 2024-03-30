@@ -148,30 +148,38 @@ class ServerlessReact {
       initialize: async () => {},
       "before:offline:start": async () => {
         this.log.verbose("before:offline:start");
+        let errored = false;
         try {
           await this.build(
             "development",
             this.pluginConfig.reloadHandler || false
           );
         } catch (e) {
+          errored = true;
           if (e instanceof Error) {
             this.log.error(e.message);
           }
         } finally {
-          exit(1);
+          if (errored) {
+            exit(1);
+          }
         }
       },
       "before:package:createDeploymentArtifacts": async () => {
         this.log.verbose("before:package:createDeploymentArtifacts");
+        let errored = false;
         try {
           await this.build("production", false);
         } catch (e) {
+          errored = true;
           if (e instanceof Error) {
             this.log.error(e.message);
           }
           throw e;
         } finally {
-          exit(1);
+          if (errored) {
+            exit(1);
+          }
         }
       },
     };
