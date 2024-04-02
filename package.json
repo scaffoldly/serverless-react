@@ -1,6 +1,6 @@
 {
   "name": "serverless-react",
-  "version": "0.2.12",
+  "version": "1.0.0",
   "engines": {
     "node": ">=18"
   },
@@ -17,12 +17,10 @@
     "postinstall": "yarn build"
   },
   "dependencies": {
-    "@types/fs-extra": "^11.0.4",
-    "@types/mime": "3",
-    "@types/node": ">=16",
-    "@types/webpack": "^5.28.5",
-    "mime": "3",
-    "typescript": ">=5"
+    "@types/fs-extra": "11",
+    "@types/node": "16",
+    "@types/webpack": "5",
+    "typescript": "5"
   },
   "peerDependencies": {
     "react-scripts": "^5.0.1",
