@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@types/fs-extra": "11",
+    "@types/mime": "3",
     "@types/node": "16",
     "@types/webpack": "5",
     "typescript": "5"
