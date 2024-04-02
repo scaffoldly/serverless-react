@@ -18,9 +18,10 @@
   },
   "dependencies": {
     "@types/fs-extra": "^11.0.4",
+    "@types/mime": "3",
     "@types/node": ">=16",
     "@types/webpack": "^5.28.5",
-    "mime": "4.0.1",
+    "mime": "3",
     "typescript": ">=5"
   },
   "peerDependencies": {
